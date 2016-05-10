@@ -1,0 +1,16 @@
+#PORTA DEL SERVER
+SERVER_PORT 2000
+
+#DIMENSIONE BLOCCO BUFFER
+BUFFER_SIZE 512
+
+#Nome del database degli utenti. Utile per salvataggi
+DBNAME DBUtente.dat
+
+#Configura per multicasting per il keepalive
+MULTICAST_IP 225.3.0.1
+MULTICAST_RECV_PORT 4000
+MULTICAST_TTL 1
+
+#in millisecondi
+KEEP_ALIVE_DELAY 10000
