@@ -14,7 +14,7 @@ public class PacketMessage implements Serializable{
         SEARCHUSER, SEARCHUSERRESPONSE,
         ERROR, SUCCESS,
         TOKENUPDATE,
-        SHARETHIS
+        SHARETHIS, FOLLOWREQUEST
     }
 
     private SimpleMessage message;

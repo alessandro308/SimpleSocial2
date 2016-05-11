@@ -7,8 +7,9 @@ import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Exception.UserNotFoundException;
 import SimpleSocial.Message.*;
 import SimpleSocial.Message.PacketMessage.MessageType;
+import SimpleSocial.Message.RemoteMessage.FollowerManager;
+import SimpleSocial.Message.RemoteMessage.FollowerManagerImpl;
 import SimpleSocial.ObjectSocketChannel;
-import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -21,6 +22,7 @@ import java.nio.channels.SocketChannel;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Vector;
 
 /**
@@ -40,11 +42,21 @@ public class SocialServer {
         Thread keepAliveThread = new Thread(keepAliveService);
         keepAliveThread.start();
 
+        FollowerManager manager;
+        try{
+            //registry = LocateRegistry.getRegistry((String) config.getValue("REGISTRY_HOST"));
+            registry = LocateRegistry.createRegistry(1099);
+        }catch (RemoteException e){
+            System.err.println("Errore creazione RMI Object: "+e.getMessage());
+        }/*catch (UnregisteredConfigNameException e){
+            System.err.println("REGISTRY_HOST non correttamente configurato");
+        }*/
+
         try {
-            registry = LocateRegistry.getRegistry();
-            registry.rebind();
+            manager = (FollowerManager) UnicastRemoteObject.exportObject(new FollowerManagerImpl(database), 0);
+            registry.rebind(FollowerManager.OBJECT_NAME, manager);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            System.err.println("Errore bind RMI: "+e.getMessage());
         }
 
         try {
@@ -83,7 +95,6 @@ public class SocialServer {
                         else {
                             att = (ObjectSocketChannel) key.attachment();
                         }
-
                         if(att.readObject()){ //Se read return true ha finito di leggere
                             pktMsg = (PacketMessage) att.getReceivedObject();
                             connectionHandler(pktMsg, key);
@@ -115,11 +126,11 @@ public class SocialServer {
                         database.getUserByName(p.getMessage().getUsername()).checkToken(p.getMessage().getoAuth())) {
                     database.setOnline(database.getUserByName(p.getMessage().getUsername()));
                 } else {
-                    return;
+                    sendError(sender, "Utente non autenticato correttamente.");
                 }
             }
         }catch (UserNotFoundException closeAll){
-            return;
+            sendError(sender, "Utente non riconosciuto.");
         }
 
         if(p.getType().equals(MessageType.REGISTER)){

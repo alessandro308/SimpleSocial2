@@ -14,3 +14,5 @@ MULTICAST_TTL 1
 
 #in millisecondi
 KEEP_ALIVE_DELAY 10000
+
+REGISTRY_HOST localhost

@@ -47,7 +47,9 @@ public class KeepAliveServerService implements Runnable{
                     System.out.println("Errore di comunicazione con la rete. "+e.getMessage());
                 }
                 Thread.sleep(delay);
-                database.updateOnline();
+                Vector<User> online = database.updateOnline();
+                System.out.println("-Utenti Online-");
+                online.forEach(e -> System.out.println(e.getUsername()));
             }
         }catch (UnregisteredConfigNameException e){
             System.err.println("MULTICAST_PORT o MULTICAST_TTL non settati correttamente nel file di configurazione");

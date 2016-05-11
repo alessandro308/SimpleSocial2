@@ -4,7 +4,10 @@ import SimpleSocial.Config;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Message.*;
+import SimpleSocial.Message.RemoteMessage.FollowerManager;
+import SimpleSocial.Message.RemoteMessage.FollowerManagerImpl;
 import SimpleSocial.ObjectSocket;
+import SocialServer.UserDB;
 
 
 import java.io.BufferedReader;
@@ -13,6 +16,12 @@ import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.UnknownHostException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -22,6 +31,7 @@ public class SocialClient {
     Thread keepAliveService;
     Listener listener = new Listener();
     Thread listenerThr;
+    Registry registry;
 
     public SocialClient(){
         if(!config.isSet("SERVER_HOSTNAME")){
@@ -29,6 +39,15 @@ public class SocialClient {
         }
         if(!config.isSet("SERVER_PORT")){
             config.setConfig("SERVER_PORT", 2000);
+        }
+        try {
+            registry = LocateRegistry.getRegistry((String) config.getValue("REGISTRY_HOST"));
+            FollowerManager manager = (FollowerManager) UnicastRemoteObject.exportObject(new FollowerManagerImpl(new UserDB()), 0);
+            //registry.bind(FollowerManager.OBJECT_NAME, manager); //Testo se il server ha inserito l'emento e se l'RMIRegistry è lo stesso
+        } catch (UnregisteredConfigNameException e) {
+            System.err.println("Errore: REGISTRY_HOST non impostato.");
+        } catch (RemoteException e){
+            System.err.println("Errore avvio RMI Registry. Il server ha avviato rmiregistry?" + e.getMessage());
         }
     }
 
@@ -155,6 +174,7 @@ public class SocialClient {
                                         System.out.println("Errore nell'accettazione dell'amicizia. Boh!");
                                     }
                                 }
+                                //TODO: implementare rifiuto richiesta amicizia
                             }catch (IOException e){
                                 System.out.println("Errori di comunicazione. Riprovare.");
                             }catch (UnregisteredConfigNameException ignored){}
@@ -172,11 +192,53 @@ public class SocialClient {
                         } catch (UnregisteredConfigNameException e) {
                             logout();
                         } catch (IOException e){
-                            System.err.println("Errore di comunicazione. "+e.getMessage());
+                            System.err.println("Errore di comunicazione: "+e.getMessage());
                         }
                         break;
+                    case 8:
+                        try {
+                            Vector<String> friendsList = getFriendList();
+                            System.out.println("Quale amico vuoi seguire? (bianco per annullare)\n Amici:");
+                            friendsList.forEach(System.out::println);
+                            System.out.print(":");
+                            String toFollow = null;
+                            while(toFollow == null){
+                                String tmp = br.readLine();
+                                if(tmp.equals(""))
+                                    toFollow = "";
+                                if(friendsList.contains(tmp)){
+                                    toFollow = tmp;
+                                }else{
+                                    System.out.println("Nome dell'amico non valido. Riprova.");
+                                }
+                            }
+                            if(toFollow.equals(""))
+                                break;
+                            sendFollowRequest(toFollow);
+                        } catch (UnregisteredConfigNameException e) {
+                            logout();
+                        } catch (IOException e) {
+                            System.err.println("Errore di comunicazione: "+e.getMessage());
+                        }
+                        break;
+
                 }
             }
+        }
+    }
+
+    protected void sendFollowRequest(String toFollow){
+        try {
+            FollowerManager manager = (FollowerManager) registry.lookup(FollowerManager.OBJECT_NAME);
+            String user = (String) config.getValue("USER");
+            String oAuth = (String) config.getValue("OAUTH");
+            manager.follow(new PacketMessage(new SimpleMessage(user, oAuth, toFollow), PacketMessage.MessageType.FOLLOWREQUEST));
+        } catch (RemoteException e) {
+            System.err.println("Errore RMI. "+e.getMessage());
+        } catch (NotBoundException e) {
+            System.err.println("Il server avrà inserito il Manager nel registro? Secondo me no! "+e.getMessage());
+        } catch (UnregisteredConfigNameException e){
+            logout();
         }
     }
 
@@ -284,6 +346,7 @@ public class SocialClient {
             SimpleMessage msg = new LoginSimpleMessage(user, psw, listener.getHostname(), listener.getIP());
 
             skt.writeObject(new PacketMessage(msg, PacketMessage.MessageType.LOGIN));
+
             PacketMessage reply = (PacketMessage) skt.readObject();
             if(reply.getType() == PacketMessage.MessageType.LOGINRESPONSE){
                 config.setConfig("OAUTH", (reply.getMessage()).getoAuth());
@@ -424,6 +487,8 @@ public class SocialClient {
             System.out.println("6 - Vedi richieste di amicizia in sospeso");
         else
             System.out.println("_ - Nessuna nuova richiesta di amicizia");
+        System.out.println("7 - Pubblica contenuto");
+        System.out.println("8 - Inizia a seguire un amico");
         System.out.println("*****************************");
     }
 

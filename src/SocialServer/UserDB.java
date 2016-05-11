@@ -119,12 +119,10 @@ public class UserDB {
     /**
      * Funzione chiamata nel KeepAliveServerService per gestire gli utenti online.
      */
-    public synchronized void updateOnline(){
+    public synchronized Vector<User> updateOnline(){
         online.removeAll(userOffline);
         userOffline.addAll(online);
-        System.out.println("-Utenti Online-");
-        for(User u : online)
-            System.out.println(u.getUsername());
+        return online;
     }
 
     public void addFriendRequest(String from, String to) throws UserNotFoundException{
