@@ -4,6 +4,8 @@ import SimpleSocial.Config;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Message.*;
+import SocialClient.RemoteMessage.ClientFollowerUpdate;
+import SocialClient.RemoteMessage.ClientFollowerUpdateImpl;
 import SocialServer.RemoteMessage.FollowerManager;
 import SocialServer.RemoteMessage.FollowerManagerImpl;
 import SimpleSocial.ObjectSocket;
@@ -29,6 +31,8 @@ public class SocialClient {
     Listener listener = new Listener();
     Thread listenerThr;
     Registry registry;
+    ClientFollowerUpdateImpl updateHandler = new ClientFollowerUpdateImpl();
+    ClientFollowerUpdate stub;
 
     public SocialClient(){
         if(!config.isSet("SERVER_HOSTNAME")){
@@ -40,11 +44,12 @@ public class SocialClient {
         try {
             registry = LocateRegistry.getRegistry((String) config.getValue("REGISTRY_HOST"));
             FollowerManager manager = (FollowerManager) UnicastRemoteObject.exportObject(new FollowerManagerImpl(new UserDB()), 0);
+            stub = (ClientFollowerUpdate) UnicastRemoteObject.exportObject(updateHandler, 0);
             //registry.bind(FollowerManager.OBJECT_NAME, manager); //Testo se il server ha inserito l'emento e se l'RMIRegistry è lo stesso
         } catch (UnregisteredConfigNameException e) {
             System.err.println("Errore: REGISTRY_HOST non impostato.");
         } catch (RemoteException e){
-            System.err.println("Errore avvio RMI Registry. Il server ha avviato rmiregistry?" + e.getMessage());
+            System.err.println("Errore avvio RMI Registry e co. - Il server ha avviato rmiregistry?" + e.getMessage());
         }
     }
 
@@ -104,8 +109,9 @@ public class SocialClient {
                     System.out.println("Inserita scelta non valida");
                     opt = -1;
                 }
-                switch (opt){
+                switch (opt) {
                     case 0:
+                        config.saveOnFile();
                         System.exit(0);
                         break;
                     case 1:
@@ -113,13 +119,13 @@ public class SocialClient {
                         System.out.println("Logout avvenuto con successo");
                         break;
                     case 2:
-                        try{
+                        try {
                             System.out.print("Inserisci nome utente da ricercare: ");
                             String user = br.readLine();
                             Vector<String> found = searchUser(user);
-                            System.out.println("Trovati "+found.size()+" utenti:");
+                            System.out.println("Trovati " + found.size() + " utenti:");
                             found.forEach(System.out::println);
-                        }catch (IOException e){
+                        } catch (IOException e) {
                             System.err.println("Errore lettura System In");
                         }
 
@@ -128,68 +134,65 @@ public class SocialClient {
                         System.out.println("Rinnovo token avvenuto con successo. Token di autorizzazione: " + newToken());
                         break;
                     case 4: //Richiesta lista amici
-                        try{
+                        try {
                             Vector<String> list = getFriendList();
                             System.out.println("\n\r**LISTA AMICI:**");
-                            for(String n : list)
+                            for (String n : list)
                                 System.out.println(n);
-                        }catch (UnregisteredConfigNameException e){
-                            System.err.println("Qualcosa è andato storto. Riprovare. // "+e.getMessage());
-                        }catch (IOException e){
-                            System.err.println("Errore "+e.getMessage()+" nella comunicazione con il server. Riprovare");
+                        } catch (UnregisteredConfigNameException e) {
+                            System.err.println("Qualcosa è andato storto. Riprovare. // " + e.getMessage());
+                        } catch (IOException e) {
+                            System.err.println("Errore " + e.getMessage() + " nella comunicazione con il server. Riprovare");
                         }
                         break;
                     case 5: //Richiesta amicizia
-                        try { //TODO: Evitare che uno aggiunga se stesso come amico
+                        try {
                             System.out.print("Inserisci nome dell'amico: ");
                             String user = br.readLine();
-                            if(user.length() < 0){
+                            if (user.length() < 0) {
                                 System.out.println("Nome non valido");
                                 break;
                             }
-                            try{
+                            try {
                                 System.out.println(requestFriendship(user));
-                            }catch (UnregisteredConfigNameException ignored){
-                            }catch (IOException e){
+                            } catch (UnregisteredConfigNameException ignored) {
+                            } catch (IOException e) {
                                 System.out.println("Problemi di comunicazione. Riprovare.");
                             }
-                        }catch (IOException e){
+                        } catch (IOException e) {
                             System.err.println("Errore lettura System In");
                         }
                         break;
-                    case 6:
+                    case 6: //Accetta richieste di amicizia in sospeso
                         Vector<String> friends = listener.getFriendRequest();
-                        for (Iterator<String> iterator = friends.iterator(); iterator.hasNext();) {
+                        for (Iterator<String> iterator = friends.iterator(); iterator.hasNext(); ) {
                             String f = iterator.next();
-                            System.out.println("Nuova richiesta di amicizia da "+f+". Vuoi accettare? (Y/N)");
-                            try{
-                                if(br.readLine().toLowerCase().equals("y")){
-                                    if(acceptsFriendshipRequest(f).equals("OK")){
+                            System.out.println("Nuova richiesta di amicizia da " + f + ". Vuoi accettare? (Y/ignore)");
+                            try {
+                                if (br.readLine().toLowerCase().equals("y")) {
+                                    if (acceptsFriendshipRequest(f).equals("OK")) {
                                         System.out.println("Amico aggiunto con successo.");
                                         iterator.remove();
-                                    }else{
+                                    } else {
                                         System.out.println("Errore nell'accettazione dell'amicizia. Boh!");
                                     }
                                 }
-                                //TODO: implementare rifiuto richiesta amicizia
-                            }catch (IOException e){
+                            } catch (IOException e) {
                                 System.out.println("Errori di comunicazione. Riprovare.");
-                            }catch (UnregisteredConfigNameException ignored){}
-                        }
-                        for(String f : friends){
-
+                            } catch (UnregisteredConfigNameException ignored) {
+                            }
                         }
                         break;
                     case 7: // Pubblica contenuto
                         try {
-                            System.out.print(config.getValue("USER")+ " a cosa stai pensando?");
+                            System.out.print(config.getValue("USER") + " a cosa stai pensando?");
                             String msg = br.readLine();
                             shareMessage(msg);
                             System.out.println("Contenuto pubblicato con successo.");
                         } catch (UnregisteredConfigNameException e) {
                             logout();
-                        } catch (IOException e){
-                            System.err.println("Errore di comunicazione: "+e.getMessage()+ " Riprovare");
+                        } catch (IOException e) {
+                            System.err.println("Errore di comunicazione: " + e.getMessage() + " Riprovare");
                         }
                         break;
                     case 8: //Inizia a seguire un nuovo amico - RMI
@@ -199,26 +202,30 @@ public class SocialClient {
                             friendsList.forEach(System.out::println);
                             System.out.print(":");
                             String toFollow = null;
-                            while(toFollow == null){
+                            while (toFollow == null) {
                                 String tmp = br.readLine();
-                                if(tmp.equals(""))
+                                if (tmp.equals(""))
                                     toFollow = "";
-                                if(friendsList.contains(tmp)){
+                                if (friendsList.contains(tmp)) {
                                     toFollow = tmp;
-                                }else{
+                                } else {
                                     System.out.println("Nome dell'amico non valido. Riprova.");
                                 }
                             }
-                            if(toFollow.equals(""))
+                            if (toFollow.equals(""))
                                 break;
                             sendFollowRequest(toFollow);
                         } catch (UnregisteredConfigNameException e) {
                             logout();
                         } catch (IOException e) {
-                            System.err.println("Errore di comunicazione: "+e.getMessage());
+                            System.err.println("Errore di comunicazione: " + e.getMessage());
                         }
                         break;
-
+                    case 9: //Ricevi aggiornamenti da coloro che segui
+                        for(Post p : updateHandler.getUnreadMessage()){
+                            System.out.println("Da "+p.user+"\n"+p.message);
+                        }
+                        updateHandler.removeAllMessage();
                 }
             }
         }
@@ -284,6 +291,8 @@ public class SocialClient {
      * @throws IOException Se ci sono stati errori di comunicazione
      */
     protected String requestFriendship(String friendName) throws UnregisteredConfigNameException, IOException {
+        if(friendName.equals(config.getValue("USER")))
+            return "Non puoi aggiungere te stesso";
         ObjectSocket skt = new ObjectSocket(InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")), (Integer) config.getValue("SERVER_PORT"));
         FriendRequestSimpleMessage msg = new FriendRequestSimpleMessage((String) config.getValue("USER"),
                                                                         (String) config.getValue("OAUTH"), friendName);
@@ -350,17 +359,17 @@ public class SocialClient {
         listenerThr.start();
         try{
             ObjectSocket skt = new ObjectSocket(InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")), (Integer) config.getValue("SERVER_PORT"));
-            SimpleMessage msg = new LoginSimpleMessage(user, psw, listener.getHostname(), listener.getIP());
+            SimpleMessage msg = new LoginSimpleMessage(user, psw, listener.getHostname(), listener.getIP(), stub);
 
             skt.writeObject(new PacketMessage(msg, PacketMessage.MessageType.LOGIN));
 
             PacketMessage reply = (PacketMessage) skt.readObject();
             if(reply.getType() == PacketMessage.MessageType.LOGINRESPONSE){
-                config.setConfig("OAUTH", (reply.getMessage()).getoAuth());
+                config.reConfig("OAUTH", (reply.getMessage()).getoAuth());
                 System.out.println("Login avvenuto con successo. Token di autorizzazione: "+config.getValue("OAUTH"));
                 Long time = ((LoginSimpleMessage) reply.getMessage()).getoAuthTime();
-                config.setConfig("OAUTH_TIME", time);
-                config.setConfig("MULTICAST_IP", ((LoginSimpleMessage) reply.getMessage()).getMulticastIP());
+                config.reConfig("OAUTH_TIME", time);
+                config.reConfig("MULTICAST_IP", ((LoginSimpleMessage) reply.getMessage()).getMulticastIP());
                 try{
                     multiServer = new MulticastSocket((Integer) config.getValue("MULTICAST_PORT"));
 
@@ -429,7 +438,7 @@ public class SocialClient {
                 throw new UserExistsException( ((ErrorSimpleMessage) pkt.getMessage()).getCause() );
             }
             if(pkt.getType() == PacketMessage.MessageType.SUCCESS){
-                config.setConfig("REGISTERED", "");
+                config.setConfig("REGISTERED", "true");
                 System.out.println("Registrazione avvenuta con successo\n\r");
                 server.close();
                 return true;
@@ -496,6 +505,8 @@ public class SocialClient {
             System.out.println("_ - Nessuna nuova richiesta di amicizia");
         System.out.println("7 - Pubblica contenuto");
         System.out.println("8 - Inizia a seguire un amico");
+        if(updateHandler.getUnreadMessageCount() > 0)
+            System.out.println("9 - Nuovi aggiornamenti da coloro che segui");
         System.out.println("*****************************");
     }
 

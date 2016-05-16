@@ -2,7 +2,6 @@ package SocialServer.RemoteMessage;
 
 import SimpleSocial.Exception.UserNotFoundException;
 import SimpleSocial.Message.PacketMessage;
-import SocialClient.RemoteMessage.ClientFollowerUpdate;
 
 import java.rmi.RemoteException;
 
@@ -21,7 +20,7 @@ public class FollowerManagerImpl implements FollowerManager {
      * Richiamare la funzione con un PacketMessage contentente come dati il nome dell'utente che si vuole seguire
      * @param pkt Pacchetto spedito
      */
-    public void follow(ClientFollowerUpdate pkt) throws RemoteException{
+    public void follow(PacketMessage pkt) throws RemoteException{
         SocialServer.User u;
         SocialServer.User followed;
         try {

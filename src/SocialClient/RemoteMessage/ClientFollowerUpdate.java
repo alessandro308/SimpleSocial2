@@ -1,7 +1,11 @@
 package SocialClient.RemoteMessage;
 
+import SimpleSocial.Message.Post;
+
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.util.Vector;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Riceve gli aggiornamenti dei contenuti pubblicati dagli utenti che si seguono

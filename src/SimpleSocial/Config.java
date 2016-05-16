@@ -4,6 +4,8 @@ import SimpleSocial.Exception.*;
 
 import java.io.*;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Oggetto che carica la configurazione dal file specificato. Vengono ignorate le righe vuote.
@@ -54,7 +56,7 @@ public class Config {
 
 
     /**
-     * Imposta una nuova configurazione. Aggiorna il nome configurazione.
+     * Imposta una nuova configurazione.
      * @param key - Il nome della nuova configurazione
      * @param value - Il valore della configurazione
      * @throws ConfigValueAlreadyExistsException se la configurazione è già presente nel database
@@ -64,14 +66,15 @@ public class Config {
             throw new ConfigValueAlreadyExistsException("Il valore "+key+" esiste già");
         }
         config.put(key, value);
+    }
 
-        /*try{
-            FileOutputStream out = new FileOutputStream(fileName, true);
-            out.write( (key+" "+value+"\n").getBytes() );
-            out.close();
-        } catch(IOException e){
-            System.err.println("Non è stato possibile trovare il file di configurazione.");
-        }*/
+    /**
+     * Imposta una nuova configurazione. Aggiorna il nome configurazione se questa già esiste.
+     * @param key - Il nome della nuova configurazione
+     * @param value - Il valore della configurazione
+     */
+    public void reConfig(String key, Object value) throws ConfigValueAlreadyExistsException {
+        config.put(key, value);
     }
 
     /**
@@ -87,17 +90,22 @@ public class Config {
         }
         config.put(key, value);
 
-        //TODO: Scrivere su file le configurazioni
-        /*try{
-            FileOutputStream out = new FileOutputStream(fileName, true);
-            out.write( ("\n#"+description+"\n").getBytes() );
-            out.write( (key+" "+value+"\n").getBytes() );
-            out.close();
-        } catch(IOException e){
-            System.err.println("Non è stato possibile trovare il file di configurazione.");
-        }*/
     }
 
+    public void saveOnFile(){
+        try{
+        FileOutputStream out = new FileOutputStream(fileName);
+        Iterator it = config.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry pair = (Map.Entry)it.next();
+                out.write( (pair.getKey()+" "+pair.getValue()+"\n").getBytes() );
+            }
+            out.close();
+        }
+        catch(IOException e){
+            System.err.println("Non è stato possibile trovare il file di configurazione.");
+        }
+    }
     /**
      * Aggiorna il valore di configurazione key con un nuovo valore. Non aggiorna il file di configurazione.
      * @param key - Nome del valore

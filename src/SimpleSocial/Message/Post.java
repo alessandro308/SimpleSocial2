@@ -1,4 +1,4 @@
-package SocialClient.RemoteMessage;
+package SimpleSocial.Message;
 
 /**
  * Classe che gestisce l'update da parte degli utenti.

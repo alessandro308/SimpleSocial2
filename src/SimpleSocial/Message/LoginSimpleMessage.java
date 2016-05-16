@@ -1,5 +1,7 @@
 package SimpleSocial.Message;
 
+import SocialClient.RemoteMessage.ClientFollowerUpdate;
+
 /**
  * Created by alessandro on 06/05/16.
  */
@@ -8,6 +10,7 @@ public class LoginSimpleMessage extends SimpleMessage {
     private long oAuthTime;
     private String userIP;
     private int userPORT;
+    private ClientFollowerUpdate stub;
 
     private String multicastIP;
 
@@ -17,11 +20,12 @@ public class LoginSimpleMessage extends SimpleMessage {
         this.psw = psw;
     }
 
-    public LoginSimpleMessage(String user, String psw, String IP, int port){
+    public LoginSimpleMessage(String user, String psw, String IP, int port, ClientFollowerUpdate stub){
         this.user = user;
         this.psw = psw;
         this.userPORT = port;
         this.userIP = IP;
+        this.stub = stub;
     }
 
     public LoginSimpleMessage(String oAuth, Long oAuthTime, String multicastIP){
@@ -39,5 +43,6 @@ public class LoginSimpleMessage extends SimpleMessage {
     public String getMulticastIP(){ return multicastIP; }
     public String getUserHostname(){ return this.userIP;}
     public int getUserPORT(){ return this.userPORT;}
+    public ClientFollowerUpdate getStub(){ return stub;}
 
 }

@@ -153,6 +153,7 @@ public class SocialServer {
                 User u = database.getUserByName(msg.getUsername());
                 String oAuth = u.checkLogin(msg.getPassword());
                 u.setHost(msg.getUserHostname(), msg.getUserPORT());
+                u.setStub(msg.getStub());
                 database.setOnline(u.getUsername());
                 sendPkt(sender, MessageType.LOGINRESPONSE, new LoginSimpleMessage(oAuth, u.getLoginTime(), (String) config.getValue("MULTICAST_IP")));
             }catch (UserNotFoundException e){
@@ -253,10 +254,19 @@ public class SocialServer {
         if(p.getType().equals(MessageType.SHARETHIS)){
             try{
                 User u = database.getUserByName(p.getMessage().getUsername());
-                for(String friendName : u.getFollowers()){
-
+                for(String follower : u.getFollowers()){
+                    if(!database.isOnline(follower)){
+                        database.getUserByName(follower).addUnsentMessage(new Post(u.getUsername(), (String) p.getMessage().getData()));
+                    }
+                    else{
+                        database.getUserByName(follower).getStub().addMessage(u.getUsername(), (String) p.getMessage().getData());
+                    }
                 }
-            } catch (UserNotFoundException ignored){}
+            }
+            catch (UserNotFoundException ignored){}
+            catch (RemoteException e) {
+                System.err.println("Errore remoto. "+e.getMessage());
+            }
         }
     }
 

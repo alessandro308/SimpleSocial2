@@ -1,7 +1,9 @@
 package SocialServer;
 
 import SimpleSocial.Exception.LoginFailException;
+import SimpleSocial.Message.Post;
 import SimpleSocial.RandomString;
+import SocialClient.RemoteMessage.ClientFollowerUpdate;
 
 import java.io.Serializable;
 
@@ -20,6 +22,9 @@ public class User implements Serializable{
     private static RandomString rand = new RandomString(10);
     private Vector<String> friends = new Vector<>();
     private Vector<String> followers = new Vector<>();
+    private ClientFollowerUpdate stub;
+
+    private Vector<Post> unsentMessage = new Vector<>();
 
     public User(String user, String password){
         this.user = user;
@@ -155,6 +160,25 @@ public class User implements Serializable{
      */
     public Vector<String> getFriends(){
         return friends;
+    }
+
+    /**
+     * Aggiorna lo stub che permette al server di mandare messaggi di update al client
+     * @param stub Oggetto remoto del client
+     */
+    public void setStub(ClientFollowerUpdate stub){
+        this.stub = stub;
+    }
+
+    /**
+     * @return l'oggetto ClientFollowerUpdate dell'utente. Null se non è impostato.
+     */
+    public ClientFollowerUpdate getStub(){
+        return this.stub;
+    }
+
+    public void addUnsentMessage(Post msg){
+        this.unsentMessage.add(msg);
     }
 }
 
