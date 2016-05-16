@@ -1,15 +1,14 @@
 package SocialServer;
 
-import java.io.*;
-import java.nio.ByteBuffer;
+import SimpleSocial.Exception.UserExistsException;
+import SimpleSocial.Exception.UserNotFoundException;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
-import SimpleSocial.Exception.*;
-import com.sun.xml.internal.xsom.impl.scd.Iterators;
 
 /**
- * Created by alessandro on 05/05/16.
+ * Database degli utenti:User
  */
 public class UserDB {
     private Vector<User> users = new Vector<>();

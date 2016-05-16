@@ -1,9 +1,8 @@
-package SimpleSocial.Message.RemoteMessage;
+package SocialServer.RemoteMessage;
 
 import SimpleSocial.Exception.UserNotFoundException;
 import SimpleSocial.Message.PacketMessage;
-import SocialServer.User;
-import SocialServer.UserDB;
+import SocialClient.RemoteMessage.ClientFollowerUpdate;
 
 import java.rmi.RemoteException;
 
@@ -12,9 +11,9 @@ import java.rmi.RemoteException;
  */
 public class FollowerManagerImpl implements FollowerManager {
 
-    private UserDB database;
+    private SocialServer.UserDB database;
 
-    public FollowerManagerImpl(UserDB database){
+    public FollowerManagerImpl(SocialServer.UserDB database){
         this.database = database;
     }
 
@@ -22,9 +21,9 @@ public class FollowerManagerImpl implements FollowerManager {
      * Richiamare la funzione con un PacketMessage contentente come dati il nome dell'utente che si vuole seguire
      * @param pkt Pacchetto spedito
      */
-    public void follow(PacketMessage pkt) throws RemoteException{
-        User u;
-        User followed;
+    public void follow(ClientFollowerUpdate pkt) throws RemoteException{
+        SocialServer.User u;
+        SocialServer.User followed;
         try {
             u = database.getUserByName(pkt.getMessage().getUsername());
             followed = database.getUserByName((String) pkt.getMessage().getData());
@@ -32,10 +31,10 @@ public class FollowerManagerImpl implements FollowerManager {
             return;
         }
 
-        System.out.println("CHIAMATA FOLLOW");
-        if(pkt.getType().equals(PacketMessage.MessageType.FOLLOWREQUEST) && u.checkToken(pkt.getMessage().getoAuth()))
+        if(pkt.getType().equals(PacketMessage.MessageType.FOLLOWREQUEST) && u.checkToken(pkt.getMessage().getoAuth())) {
             database.setOnline(u);
-        followed.addFollower(u.getUsername());
+            followed.addFollower(u.getUsername());
+        }
     }
 
 }

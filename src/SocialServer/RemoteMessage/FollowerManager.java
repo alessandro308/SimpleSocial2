@@ -1,11 +1,10 @@
-package SimpleSocial.Message.RemoteMessage;
+package SocialServer.RemoteMessage;
 
 import SimpleSocial.Message.PacketMessage;
-import SocialServer.UserDB;
+import SocialServer.SocialServer;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.Vector;
 
 /**
  * Created by alessandro on 10/05/16.

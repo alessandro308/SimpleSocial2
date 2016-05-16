@@ -4,19 +4,16 @@ import SimpleSocial.Config;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Message.*;
-import SimpleSocial.Message.RemoteMessage.FollowerManager;
-import SimpleSocial.Message.RemoteMessage.FollowerManagerImpl;
+import SocialServer.RemoteMessage.FollowerManager;
+import SocialServer.RemoteMessage.FollowerManagerImpl;
 import SimpleSocial.ObjectSocket;
 import SocialServer.UserDB;
-
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.net.UnknownHostException;
-import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -143,7 +140,7 @@ public class SocialClient {
                         }
                         break;
                     case 5: //Richiesta amicizia
-                        try {
+                        try { //TODO: Evitare che uno aggiunga se stesso come amico
                             System.out.print("Inserisci nome dell'amico: ");
                             String user = br.readLine();
                             if(user.length() < 0){
@@ -183,7 +180,7 @@ public class SocialClient {
 
                         }
                         break;
-                    case 7:
+                    case 7: // Pubblica contenuto
                         try {
                             System.out.print(config.getValue("USER")+ " a cosa stai pensando?");
                             String msg = br.readLine();
@@ -192,13 +189,13 @@ public class SocialClient {
                         } catch (UnregisteredConfigNameException e) {
                             logout();
                         } catch (IOException e){
-                            System.err.println("Errore di comunicazione: "+e.getMessage());
+                            System.err.println("Errore di comunicazione: "+e.getMessage()+ " Riprovare");
                         }
                         break;
-                    case 8:
+                    case 8: //Inizia a seguire un nuovo amico - RMI
                         try {
                             Vector<String> friendsList = getFriendList();
-                            System.out.println("Quale amico vuoi seguire? (bianco per annullare)\n Amici:");
+                            System.out.println("Quale amico vuoi seguire? (lascia bianco per annullare)\n Amici:");
                             friendsList.forEach(System.out::println);
                             System.out.print(":");
                             String toFollow = null;
@@ -227,6 +224,10 @@ public class SocialClient {
         }
     }
 
+    /**
+     * Inizia a seguire un utente. Funzione che utilizza RMI
+     * @param toFollow nome utente da seguire
+     */
     protected void sendFollowRequest(String toFollow){
         try {
             FollowerManager manager = (FollowerManager) registry.lookup(FollowerManager.OBJECT_NAME);
@@ -242,6 +243,12 @@ public class SocialClient {
         }
     }
 
+    /**
+     * Pubblica un messaggio sul SocialServer
+     * @param msg Messaggio da pubblicare
+     * @throws UnregisteredConfigNameException Se il SERVER_HOSTNAME non è correttamente configurato
+     * @throws IOException Se ci sono stati problemi di recezione.
+     */
     protected void shareMessage(String msg) throws UnregisteredConfigNameException, IOException {
         ObjectSocket skt = new ObjectSocket(InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")), (Integer) config.getValue("SERVER_PORT"));
         SimpleMessage message = new SimpleMessage((String) config.getValue("USER"),

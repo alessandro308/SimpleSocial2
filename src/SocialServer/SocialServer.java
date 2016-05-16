@@ -7,14 +7,13 @@ import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Exception.UserNotFoundException;
 import SimpleSocial.Message.*;
 import SimpleSocial.Message.PacketMessage.MessageType;
-import SimpleSocial.Message.RemoteMessage.FollowerManager;
-import SimpleSocial.Message.RemoteMessage.FollowerManagerImpl;
 import SimpleSocial.ObjectSocketChannel;
+import SocialServer.RemoteMessage.FollowerManager;
+import SocialServer.RemoteMessage.FollowerManagerImpl;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -255,7 +254,7 @@ public class SocialServer {
             try{
                 User u = database.getUserByName(p.getMessage().getUsername());
                 for(String friendName : u.getFollowers()){
-                    break; //TODO: Implementare la callback
+
                 }
             } catch (UserNotFoundException ignored){}
         }
@@ -289,7 +288,7 @@ public class SocialServer {
         to.interestOps(SelectionKey.OP_WRITE);
     }
 
-    public static void main(String[] args) throws UnknownHostException {
+    public static void main(String[] args) {
         try{
             new SocialServer();
         }catch (Throwable e){
