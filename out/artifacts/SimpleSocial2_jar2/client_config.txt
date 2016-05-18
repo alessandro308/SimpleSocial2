@@ -1,0 +1,4 @@
+SERVER_PORT 2000
+SERVER_HOSTNAME server.apagiaro.it
+MULTICAST_PORT 4000
+REGISTRY_HOST server.apagiaro.it

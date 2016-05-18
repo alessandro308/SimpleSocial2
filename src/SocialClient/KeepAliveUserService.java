@@ -16,7 +16,11 @@ import java.nio.ByteBuffer;
 
 
 /**
- * Gestisce le connessioni di tipo keepAlive che arrivano dal server
+ * Gestisce le connessioni di tipo keepAlive che arrivano dal server.
+ *
+ * Il KeepAliveUserService riceve i pacchetti che gli arrivano e se contiene il dato "KA" risponde
+ * con un messaggio su TCP utilizzando la serializzazione dei PacketMessage implementata in questo progetto.
+ * /TODO: Capire se posso usare TCP qui o se le risposte devono viaggiare su UDP
  */
 public class KeepAliveUserService implements Runnable {
     private MulticastSocket server;

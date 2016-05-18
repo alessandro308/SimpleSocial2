@@ -46,7 +46,7 @@ public class KeepAliveServerService implements Runnable{
                 }catch ( IOException e){
                     System.out.println("Errore di comunicazione con la rete. "+e.getMessage());
                 }
-                Thread.sleep(delay);
+                Thread.sleep(delay); //todo: differente dal tempo invio KA
                 Vector<User> online = database.updateOnline();
                 System.out.println("-Utenti Online-");
                 online.forEach(e -> System.out.println(e.getUsername()));

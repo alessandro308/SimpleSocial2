@@ -2,6 +2,8 @@ package SocialServer.RemoteMessage;
 
 import SimpleSocial.Exception.UserNotFoundException;
 import SimpleSocial.Message.PacketMessage;
+import SocialClient.RemoteMessage.ClientFollowerUpdate;
+import SocialServer.User;
 
 import java.rmi.RemoteException;
 
@@ -33,6 +35,19 @@ public class FollowerManagerImpl implements FollowerManager {
         if(pkt.getType().equals(PacketMessage.MessageType.FOLLOWREQUEST) && u.checkToken(pkt.getMessage().getoAuth())) {
             database.setOnline(u);
             followed.addFollower(u.getUsername());
+        }
+    }
+
+    @Override
+    public void addCallback(String user, String oAuth, ClientFollowerUpdate callback) throws RemoteException {
+        try {
+            User u = database.getUserByName(user);
+            if(u.checkToken(oAuth)){
+                u.setStub(callback);
+                database.setOnline(u);
+            }
+        } catch (UserNotFoundException ignored) {
+            /* L'utente non esiste. Ciaone! */
         }
     }
 

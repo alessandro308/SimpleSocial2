@@ -20,12 +20,11 @@ public class LoginSimpleMessage extends SimpleMessage {
         this.psw = psw;
     }
 
-    public LoginSimpleMessage(String user, String psw, String IP, int port, ClientFollowerUpdate stub){
+    public LoginSimpleMessage(String user, String psw, String IP, int port){
         this.user = user;
         this.psw = psw;
         this.userPORT = port;
         this.userIP = IP;
-        this.stub = stub;
     }
 
     public LoginSimpleMessage(String oAuth, Long oAuthTime, String multicastIP){

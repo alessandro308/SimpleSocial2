@@ -15,11 +15,17 @@ public class Listener implements Runnable {
     private String hostname;
     private Vector<String> friendRequest=new Vector<>();
 
+    /**
+     * Avvia una socket in ascolto per ricevere le richieste di amicizia.
+     * Se i pacchetti non sono di tipo FRIENDREQUEST_CONFIRM i pacchetti sono scartati.
+     */
+
     public Listener(){
         try {
             this.hostname = InetAddress.getLocalHost().getHostAddress();
         } catch (UnknownHostException ignored) {}
     }
+
     @Override
     public void run() {
         try{
@@ -31,11 +37,16 @@ public class Listener implements Runnable {
                 switch (msg.getType()){
                     case FRIENDREQUEST_CONFIRM:
                         friendRequest.add((String) msg.getMessage().getData());
+                        break;
+                    default:
+                        break;
                 }
             }
 
 
-        }catch (IOException e){}
+        }catch (IOException e){
+            System.err.println("Errore di comunicazione. "+e.getMessage());
+        }
 
     }
 

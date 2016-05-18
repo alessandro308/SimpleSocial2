@@ -14,6 +14,7 @@ import SocialServer.RemoteMessage.FollowerManagerImpl;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -33,6 +34,7 @@ public class SocialServer {
     KeepAliveServerService keepAliveService = new KeepAliveServerService(config, database);
     Selector selector;
     Registry registry;
+
     /**
      * Funzione principale del server. Tramite selettore gestisce le richieste passando poi il canale alla funzione di
      * handler che si preoccupa di gestirle.
@@ -43,17 +45,26 @@ public class SocialServer {
 
         FollowerManager manager;
         try{
-            //registry = LocateRegistry.getRegistry((String) config.getValue("REGISTRY_HOST"));
-            registry = LocateRegistry.createRegistry(1099);
+            boolean cond;
+            try{
+                cond = config.getValue("REGISTRY_IS_LOCAL").equals("true");
+            } catch (UnregisteredConfigNameException e){
+                cond = false;
+            }
+            if(cond)
+                registry = LocateRegistry.createRegistry(1099);
+            else
+                registry = LocateRegistry.getRegistry((String) config.getValue("REGISTRY_HOST"));
+
         }catch (RemoteException e){
             System.err.println("Errore creazione RMI Object: "+e.getMessage());
-        }/*catch (UnregisteredConfigNameException e){
+        }catch (UnregisteredConfigNameException e){
             System.err.println("REGISTRY_HOST non correttamente configurato");
-        }*/
+        }
 
         try {
             manager = (FollowerManager) UnicastRemoteObject.exportObject(new FollowerManagerImpl(database), 0);
-            registry.rebind(FollowerManager.OBJECT_NAME, manager);
+            registry.rebind(FollowerManager.OBJECT_NAME, manager); //TODO: Perchè questa cosa non associa?
         } catch (RemoteException e) {
             System.err.println("Errore bind RMI: "+e.getMessage());
         }
@@ -62,10 +73,10 @@ public class SocialServer {
             selector = Selector.open();
             ServerSocketChannel socket = ServerSocketChannel.open();
             try{
-                socket.bind(new InetSocketAddress(InetAddress.getByName("localhost"), (Integer) config.getValue("SERVER_PORT")));
+                socket.bind(new InetSocketAddress(InetAddress.getByName((String) config.getValue("SERVER_HOST")), (Integer) config.getValue("SERVER_PORT")));
             } catch (UnregisteredConfigNameException e){
-                config.setConfig("SERVER_PORT", 2000);
-                socket.bind(new InetSocketAddress(InetAddress.getByName("localhost"), 2000));
+                System.err.println("Impostazioni non valide. Imposta SERVER_HOST e SERVER_PORT");
+                return;
             }
             socket.configureBlocking(false);
             socket.register(selector, SelectionKey.OP_ACCEPT);
@@ -117,6 +128,7 @@ public class SocialServer {
      * Funzione di lettura e gestione dei pacchetti arrivati
      * @param p - Pacchetto ricevuto
      * @param sender - Mittente. Necessario per le risposte.
+     *               //TODO: Va bene questa gestione singleThread con NIO?
      */
     private void connectionHandler(PacketMessage p, SelectionKey sender){
         try{
@@ -153,7 +165,6 @@ public class SocialServer {
                 User u = database.getUserByName(msg.getUsername());
                 String oAuth = u.checkLogin(msg.getPassword());
                 u.setHost(msg.getUserHostname(), msg.getUserPORT());
-                u.setStub(msg.getStub());
                 database.setOnline(u.getUsername());
                 sendPkt(sender, MessageType.LOGINRESPONSE, new LoginSimpleMessage(oAuth, u.getLoginTime(), (String) config.getValue("MULTICAST_IP")));
             }catch (UserNotFoundException e){
@@ -230,12 +241,14 @@ public class SocialServer {
                         }
 
                     }else{
-                        throw new IOException("L'utente non è online");
+                        sendError(sender, "Errore, l'utente non è attualmente online");
                     }
                 }catch (IOException e){
                     sendError(sender, "Errore: "+e.getMessage());
                 }
-            }catch (UserNotFoundException ignored){}
+            }catch (UserNotFoundException e){
+                sendError(sender, "Errore: Utente non valido");
+            }
         }
         if(p.getType().equals(MessageType.FRIENDREQUEST_CONFIRM)){
             try {
@@ -299,11 +312,9 @@ public class SocialServer {
     }
 
     public static void main(String[] args) {
-        try{
-            new SocialServer();
-        }catch (Throwable e){
-            e.printStackTrace();
-        }
+
+        new SocialServer();
+
     }
 
 }

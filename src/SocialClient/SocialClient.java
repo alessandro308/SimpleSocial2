@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.SocketException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -111,6 +112,7 @@ public class SocialClient {
                 }
                 switch (opt) {
                     case 0:
+                        logout();
                         config.saveOnFile();
                         System.exit(0);
                         break;
@@ -243,6 +245,7 @@ public class SocialClient {
             manager.follow(new PacketMessage(new SimpleMessage(user, oAuth, toFollow), PacketMessage.MessageType.FOLLOWREQUEST));
         } catch (RemoteException e) {
             System.err.println("Errore RMI. "+e.getMessage());
+            e.printStackTrace();
         } catch (NotBoundException e) {
             System.err.println("Il server avrà inserito il Manager nel registro? Secondo me no! "+e.getMessage());
         } catch (UnregisteredConfigNameException e){
@@ -359,7 +362,7 @@ public class SocialClient {
         listenerThr.start();
         try{
             ObjectSocket skt = new ObjectSocket(InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")), (Integer) config.getValue("SERVER_PORT"));
-            SimpleMessage msg = new LoginSimpleMessage(user, psw, listener.getHostname(), listener.getIP(), stub);
+            SimpleMessage msg = new LoginSimpleMessage(user, psw, listener.getHostname(), listener.getIP());
 
             skt.writeObject(new PacketMessage(msg, PacketMessage.MessageType.LOGIN));
 
@@ -372,12 +375,27 @@ public class SocialClient {
                 config.reConfig("MULTICAST_IP", ((LoginSimpleMessage) reply.getMessage()).getMulticastIP());
                 try{
                     multiServer = new MulticastSocket((Integer) config.getValue("MULTICAST_PORT"));
-
                     InetAddress multicastGroup = InetAddress.getByName((String) config.getValue("MULTICAST_IP"));
                     multiServer.joinGroup(multicastGroup);
                     keepAliveService = new Thread(new KeepAliveUserService(multiServer, config));
                     keepAliveService.start();
-                }catch (UnregisteredConfigNameException ignored){}
+                }catch (UnregisteredConfigNameException e) {
+                    System.err.println("Errore nel file di configurazione. "+e.getMessage());
+                }catch (SocketException e) {
+                    System.err.println("Non ho potuto avviare la gestione multicasting del KeepAlive");
+                    System.err.println("Hai avviato la JVM con -Djava.net.preferIPv4Stack=true? " + e.getMessage());
+                }catch (IOException | SecurityException e){
+                    System.err.println("Errore Multicast "+e.getMessage());
+                }
+
+                try {
+                    FollowerManager manager = (FollowerManager) registry.lookup(FollowerManager.OBJECT_NAME);
+                    manager.addCallback((String) config.getValue("USER"), (String) config.getValue("OAUTH"), stub);
+                } catch (NotBoundException e) {
+                    System.err.println("Dannazione. Il server non ha attivato l'RMI. "+e.getMessage());
+                    e.printStackTrace();
+                }
+
                 return true;
             }else if(reply.getType() == PacketMessage.MessageType.ERROR){
                 return false;
@@ -385,7 +403,7 @@ public class SocialClient {
         } catch (IOException e){
             e.printStackTrace();
             System.err.println("Errore comunicazione con il server. Riprovare. "+e.getMessage());
-        } catch (UnregisteredConfigNameException e){
+        } catch (UnregisteredConfigNameException e) {
             System.err.println("Non tutte le configurazioni sono settate opportunamente");
             e.printStackTrace();
         }
@@ -474,6 +492,7 @@ public class SocialClient {
         return new Vector<>();
 
     }
+
     /**
      * Funzione di verifica del token oAuth.
      * @return Ritorna true se il token è ancora valido. False altrimenti.
@@ -497,8 +516,8 @@ public class SocialClient {
         System.out.println("1 - Logout");
         System.out.println("2 - Search User");
         System.out.println("3 - Rinnovo del token di sessione");
-        System.out.println("4 - Stampa lista dei miei amici");
-        System.out.println("5 - Richiesti amico");
+        System.out.println("4 - Stampa lista degli amici");
+        System.out.println("5 - Aggiungi amico");
         if(listener.getFriendRequest().size() > 0)
             System.out.println("6 - Vedi richieste di amicizia in sospeso");
         else
@@ -507,10 +526,13 @@ public class SocialClient {
         System.out.println("8 - Inizia a seguire un amico");
         if(updateHandler.getUnreadMessageCount() > 0)
             System.out.println("9 - Nuovi aggiornamenti da coloro che segui");
+        else
+            System.out.println("_ - Nessun nuovo aggiornamento");
         System.out.println("*****************************");
     }
 
     public static void main(String[] args){
+        System.setProperty("java.net.preferIPv4Stack" , "true");
         new SocialClient().start();
     }
 
