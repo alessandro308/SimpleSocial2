@@ -6,12 +6,11 @@ import SimpleSocial.Message.PacketMessage;
 import SimpleSocial.Message.SimpleMessage;
 import SimpleSocial.ObjectSocket;
 
+import javax.xml.crypto.Data;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.InetAddress;
-import java.net.MulticastSocket;
+import java.net.*;
 import java.nio.ByteBuffer;
 
 
@@ -20,14 +19,30 @@ import java.nio.ByteBuffer;
  *
  * Il KeepAliveUserService riceve i pacchetti che gli arrivano e se contiene il dato "KA" risponde
  * con un messaggio su TCP utilizzando la serializzazione dei PacketMessage implementata in questo progetto.
- * /TODO: Capire se posso usare TCP qui o se le risposte devono viaggiare su UDP
  */
 public class KeepAliveUserService implements Runnable {
-    private MulticastSocket server;
-    Config config;
-    public KeepAliveUserService(MulticastSocket server, Config config){
-        this.server = server;
+    private MulticastSocket multicastSocket;
+    private Config config;
+    private DatagramSocket skt;
+    public KeepAliveUserService(Config config){
         this.config = config;
+
+        try {
+            this.multicastSocket = new MulticastSocket((Integer) config.getValue("MULTICAST_PORT"));
+            InetAddress multicastGroup = InetAddress.getByName((String) config.getValue("MULTICAST_IP"));
+            this.multicastSocket.joinGroup(multicastGroup);
+        } catch (IOException e) {
+            System.err.println("Errore nella gestione del multicasting. Riprovare.");
+        } catch (UnregisteredConfigNameException e){
+            System.err.println("Non sono stati correttamente impostati MULTICAST_PORT e/o MULTICAST_IP");
+        }
+
+        try {
+            //Usata per mandare la risposte del KeepAlive al server
+            skt = new DatagramSocket();
+        } catch (SocketException e) {
+            System.err.println("Errore avvio DatagramSocket nel KeepAliveUserService. Riavviare");
+        }
     }
 
     @Override
@@ -35,27 +50,22 @@ public class KeepAliveUserService implements Runnable {
         DatagramPacket pkt = new DatagramPacket(new byte[512], 512);
         while(true){
             try{
-                server.receive(pkt);
+                multicastSocket.receive(pkt);
 
                 byte[] b = pkt.getData();
                 String msg = new String(b, 0, pkt.getLength());
 
-                if(msg.equals("KA")){ //KA: Tutto bene
-                    ObjectSocket skt = new ObjectSocket(InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")),
-                                                (Integer) config.getValue("SERVER_PORT"));
-                    try{
-                        skt.writeObject(new PacketMessage(
-                                            new SimpleMessage(  (String) config.getValue("USER"),
-                                                                (String) config.getValue("OAUTH")),
-                                                                 PacketMessage.MessageType.KEEPALIVE));
-                    } catch (UnregisteredConfigNameException e){
-                        return;
-                    }
+                String reply = ((String) config.getValue("OAUTH"))+config.getValue("USER");
+                DatagramPacket pacchetto = new DatagramPacket(reply.getBytes(), reply.getBytes().length,
+                                                                InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")),
+                                                                (Integer) config.getValue("PORTA_SERVER_KA"));
+                if(msg.equals("KA")){ //K_eep A_live: Tutto bene
+                    skt.send(pacchetto);
                 }
             } catch (IOException e){
                 System.err.println("Errore ricezione keepAlive. Verificare la connessione con il server");
                 e.printStackTrace();
-            } catch (UnregisteredConfigNameException e){
+            } catch (UnregisteredConfigNameException e) {
                 System.err.println("Errore nel caricamento delle impostazioni. Verificare SERVER_HOSTNAME");
             }
         }

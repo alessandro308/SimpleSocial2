@@ -107,7 +107,7 @@ public class SocialClient {
                 try{
                     opt = Integer.parseInt(br.readLine());
                 } catch (IOException | NumberFormatException e){
-                    System.out.println("Inserita scelta non valida");
+                    System.out.println("Dai su, leggi e inserisci qualcosa di valido...");
                     opt = -1;
                 }
                 switch (opt) {
@@ -228,6 +228,7 @@ public class SocialClient {
                             System.out.println("Da "+p.user+"\n"+p.message);
                         }
                         updateHandler.removeAllMessage();
+                        break;
                 }
             }
         }
@@ -373,20 +374,10 @@ public class SocialClient {
                 Long time = ((LoginSimpleMessage) reply.getMessage()).getoAuthTime();
                 config.reConfig("OAUTH_TIME", time);
                 config.reConfig("MULTICAST_IP", ((LoginSimpleMessage) reply.getMessage()).getMulticastIP());
-                try{
-                    multiServer = new MulticastSocket((Integer) config.getValue("MULTICAST_PORT"));
-                    InetAddress multicastGroup = InetAddress.getByName((String) config.getValue("MULTICAST_IP"));
-                    multiServer.joinGroup(multicastGroup);
-                    keepAliveService = new Thread(new KeepAliveUserService(multiServer, config));
-                    keepAliveService.start();
-                }catch (UnregisteredConfigNameException e) {
-                    System.err.println("Errore nel file di configurazione. "+e.getMessage());
-                }catch (SocketException e) {
-                    System.err.println("Non ho potuto avviare la gestione multicasting del KeepAlive");
-                    System.err.println("Hai avviato la JVM con -Djava.net.preferIPv4Stack=true? " + e.getMessage());
-                }catch (IOException | SecurityException e){
-                    System.err.println("Errore Multicast "+e.getMessage());
-                }
+
+                keepAliveService = new Thread(new KeepAliveUserService(config));
+                keepAliveService.start();
+
 
                 try {
                     FollowerManager manager = (FollowerManager) registry.lookup(FollowerManager.OBJECT_NAME);

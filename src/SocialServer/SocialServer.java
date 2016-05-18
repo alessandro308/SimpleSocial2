@@ -20,8 +20,6 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Main class used to run server.
@@ -55,6 +53,8 @@ public class SocialServer {
             else
                 registry = LocateRegistry.getRegistry((String) config.getValue("REGISTRY_HOST"));
 
+            manager = (FollowerManager) UnicastRemoteObject.exportObject(new FollowerManagerImpl(database), 0);
+            registry.rebind(FollowerManager.OBJECT_NAME, manager);
         }catch (RemoteException e){
             System.err.println("Errore creazione RMI Object: "+e.getMessage());
         }catch (UnregisteredConfigNameException e){
@@ -62,21 +62,16 @@ public class SocialServer {
         }
 
         try {
-            manager = (FollowerManager) UnicastRemoteObject.exportObject(new FollowerManagerImpl(database), 0);
-            registry.rebind(FollowerManager.OBJECT_NAME, manager);
-        } catch (RemoteException e) {
-            System.err.println("Errore bind RMI: "+e.getMessage());
-        }
-
-        try {
             selector = Selector.open();
             ServerSocketChannel socket = ServerSocketChannel.open();
             try{
-                socket.bind(new InetSocketAddress(InetAddress.getByName((String) config.getValue("SERVER_HOST")), (Integer) config.getValue("SERVER_PORT")));
+                socket.bind(new InetSocketAddress(InetAddress.getByName((String) config.getValue("SERVER_HOST")),
+                                                                        (Integer) config.getValue("SERVER_PORT")));
             } catch (UnregisteredConfigNameException e){
                 System.err.println("Impostazioni non valide. Imposta SERVER_HOST e SERVER_PORT");
                 return;
             }
+
             socket.configureBlocking(false);
             socket.register(selector, SelectionKey.OP_ACCEPT);
 
@@ -125,7 +120,7 @@ public class SocialServer {
     }
 
     public static void main(String[] args) {
-
+        System.setProperty("java.net.preferIPv4Stack" , "true");
         new SocialServer();
 
     }
