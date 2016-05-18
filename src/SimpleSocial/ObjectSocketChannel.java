@@ -91,7 +91,6 @@ public class ObjectSocketChannel {
             if (objectToSend.hasRemaining()) //L'oggetto non è terminato
                 return false;
         }
-
         this.getSocket().close();
         return true;
     }
