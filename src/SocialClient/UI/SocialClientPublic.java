@@ -1,5 +1,6 @@
 package SocialClient.UI;
 
+import SimpleSocial.Exception.InvalidUserException;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SocialClient.SocialClient;
@@ -45,7 +46,7 @@ public class SocialClientPublic extends SocialClient {
         return super.logout();
     }
 
-    public boolean register(String user, String psw) throws UserExistsException {
+    public boolean register(String user, String psw) throws UserExistsException, InvalidUserException {
         return super.register(user, psw);
     }
 

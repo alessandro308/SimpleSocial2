@@ -13,7 +13,7 @@ public class ObjectSocketChannel {
     private SocketChannel socket;
     private ByteBuffer object;
     private Object receivedObj;
-    private ByteBuffer objectToSend;
+    public ByteBuffer objectToSend;
     private ByteBuffer dimension = ByteBuffer.allocate(4);
 
     public ObjectSocketChannel(SocketChannel socket){
@@ -83,8 +83,9 @@ public class ObjectSocketChannel {
             throw new ObjectNotSetException();
         }
 
-        while(dimension.hasRemaining())
+        while(dimension.hasRemaining()) {
             this.getSocket().write(dimension);
+        }
 
         if(!dimension.hasRemaining()) { //è stata scritta tutta la dimensione
             this.getSocket().write(objectToSend);

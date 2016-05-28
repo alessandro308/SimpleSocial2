@@ -26,7 +26,6 @@ public class KeepAliveUserService implements Runnable {
     private DatagramSocket skt;
     public KeepAliveUserService(Config config){
         this.config = config;
-
         try {
             this.multicastSocket = new MulticastSocket((Integer) config.getValue("MULTICAST_PORT"));
             InetAddress multicastGroup = InetAddress.getByName((String) config.getValue("MULTICAST_IP"));
@@ -48,10 +47,9 @@ public class KeepAliveUserService implements Runnable {
     @Override
     public void run() {
         DatagramPacket pkt = new DatagramPacket(new byte[512], 512);
-        while(true){
+        while(!Thread.currentThread().isInterrupted()){
             try{
                 multicastSocket.receive(pkt);
-
                 byte[] b = pkt.getData();
                 String msg = new String(b, 0, pkt.getLength());
 
@@ -66,8 +64,16 @@ public class KeepAliveUserService implements Runnable {
                 System.err.println("Errore ricezione keepAlive. Verificare la connessione con il server");
                 e.printStackTrace();
             } catch (UnregisteredConfigNameException e) {
-                System.err.println("Errore nel caricamento delle impostazioni. Verificare SERVER_HOSTNAME");
+                if(!Thread.currentThread().isInterrupted()) {
+                    System.err.println("Errore nel caricamento delle impostazioni. " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
+        }
+        try {
+            multicastSocket.leaveGroup(InetAddress.getByName((String) config.getValue("MULTICAST_IP")));
+        } catch (IOException | UnregisteredConfigNameException e) {
+
         }
     }
 }

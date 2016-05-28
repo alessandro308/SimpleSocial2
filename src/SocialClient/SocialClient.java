@@ -1,22 +1,19 @@
 package SocialClient;
 
 import SimpleSocial.Config;
+import SimpleSocial.Exception.InvalidUserException;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Message.*;
+import SimpleSocial.ObjectSocket;
 import SocialClient.RemoteMessage.ClientFollowerUpdate;
 import SocialClient.RemoteMessage.ClientFollowerUpdateImpl;
 import SocialServer.RemoteMessage.FollowerManager;
-import SocialServer.RemoteMessage.FollowerManagerImpl;
-import SimpleSocial.ObjectSocket;
-import SocialServer.UserDB;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.MulticastSocket;
-import java.net.SocketException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -27,13 +24,13 @@ import java.util.Vector;
 
 public class SocialClient {
     public Config config = new Config("client_config.txt");
-    MulticastSocket multiServer;
     Thread keepAliveService;
     Listener listener = new Listener();
     Thread listenerThr;
     Registry registry;
     ClientFollowerUpdateImpl updateHandler = new ClientFollowerUpdateImpl();
     ClientFollowerUpdate stub;
+    private boolean sonoRegistrato = false;
 
     public SocialClient(){
         if(!config.isSet("SERVER_HOSTNAME")){
@@ -44,9 +41,7 @@ public class SocialClient {
         }
         try {
             registry = LocateRegistry.getRegistry((String) config.getValue("REGISTRY_HOST"));
-            FollowerManager manager = (FollowerManager) UnicastRemoteObject.exportObject(new FollowerManagerImpl(new UserDB()), 0);
             stub = (ClientFollowerUpdate) UnicastRemoteObject.exportObject(updateHandler, 0);
-            //registry.bind(FollowerManager.OBJECT_NAME, manager); //Testo se il server ha inserito l'emento e se l'RMIRegistry è lo stesso
         } catch (UnregisteredConfigNameException e) {
             System.err.println("Errore: REGISTRY_HOST non impostato.");
         } catch (RemoteException e){
@@ -60,15 +55,39 @@ public class SocialClient {
      */
     public void start(){
 
-        while(!config.isSet("REGISTERED")){ // Fase di Registrazione
+        System.out.println("---------Benvenuto!---------");
+        System.out.println("| 1. Registrati | 2. Login |");
+        System.out.println("----------------------------");
+        System.out.flush();
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        while(true) {
+            try {
+                String l = br.readLine();
+                if (l.equals("1")) {
+                    break;
+                } else if (l.equals("2")) {
+                    sonoRegistrato = true;
+                    break;
+                } else {
+                    System.out.println("Scelta non valida.\r");
+                    System.out.flush();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        while(!sonoRegistrato){ // Fase di Registrazione
             String psw;
             String user;
             System.out.println("REGISTRAZIONE ** PRIMO AVVIO");
+            System.out.flush();
             try{
-                BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
                 System.out.println("Enter username: ");
+                System.out.flush();
                 user = br.readLine().replaceAll("\\s+","");
                 System.out.println("Enter password: ");
+                System.out.flush();
                 psw = br.readLine().replaceAll("\\s+","");
             } catch (IOException e){
                 System.err.println("Errore. Provare a riavviare l'applicazione.");
@@ -77,22 +96,29 @@ public class SocialClient {
             if(!user.equals("") && !psw.equals(""))
                 try{
                     this.register(user, psw);
+                }catch (InvalidUserException e){
+                    System.out.println("Il nome utente inserito non è valido. Deve essere di almeno 3 caratteri.");
+                    System.out.flush();
                 }catch (UserExistsException e){
-                    System.out.println("Il nome utente scelto esiste già");
+                    System.out.println("Il nome utente è già registrato. Riprovare.");
+                    System.out.flush();
                 }
-            else
+            else {
                 System.out.println("Lo user e la psw non possono essere vuoti");
+                System.out.flush();
+            }
         }
 
         int opt = -1;
         while(opt != 0){
-            while(!this.isValidSession()){ // Fase di login
+            while(!this.isValidSession()){
                 try {
                     System.out.println("**EFFETTUA IL LOGIN**");
-                    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
                     System.out.println("Inserisci username: ");
-                    String user = br.readLine().replaceAll("\\s+", "");
+                    System.out.flush();
+                    String user = br.readLine().replaceAll("\\s+", ""); //Tolgo gli spazi bianchi nel nome
                     System.out.println("Inserisci password: ");
+                    System.out.flush();
                     String psw = br.readLine().replaceAll("\\s+", "");
                     if(user.length() > 0 && psw.length() > 0 && !login(user, psw))
                         System.out.println("User o psw errati. Ritenta, sarai più fortunato!");
@@ -103,7 +129,6 @@ public class SocialClient {
             }
             if(config.isSet("OAUTH")){
                 printMan();
-                BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
                 try{
                     opt = Integer.parseInt(br.readLine());
                 } catch (IOException | NumberFormatException e){
@@ -363,7 +388,7 @@ public class SocialClient {
         listenerThr.start();
         try{
             ObjectSocket skt = new ObjectSocket(InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")), (Integer) config.getValue("SERVER_PORT"));
-            SimpleMessage msg = new LoginSimpleMessage(user, psw, listener.getHostname(), listener.getIP());
+            SimpleMessage msg = new LoginSimpleMessage(user, psw, listener.getHostname(), listener.getPort());
 
             skt.writeObject(new PacketMessage(msg, PacketMessage.MessageType.LOGIN));
 
@@ -375,9 +400,9 @@ public class SocialClient {
                 config.reConfig("OAUTH_TIME", time);
                 config.reConfig("MULTICAST_IP", ((LoginSimpleMessage) reply.getMessage()).getMulticastIP());
 
-                keepAliveService = new Thread(new KeepAliveUserService(config));
+                KeepAliveUserService run = new KeepAliveUserService(config);
+                keepAliveService = new Thread(run);
                 keepAliveService.start();
-
 
                 try {
                     FollowerManager manager = (FollowerManager) registry.lookup(FollowerManager.OBJECT_NAME);
@@ -389,6 +414,7 @@ public class SocialClient {
 
                 return true;
             }else if(reply.getType() == PacketMessage.MessageType.ERROR){
+                System.err.println(((ErrorSimpleMessage)reply.getMessage()).getCause());
                 return false;
             }
         } catch (IOException e){
@@ -416,9 +442,11 @@ public class SocialClient {
             config.removeKey("OAUTH");
             config.removeKey("OAUTH_TIME");
 
-            multiServer.leaveGroup(InetAddress.getByName((String) config.getValue("MULTICAST_IP")));
             keepAliveService.interrupt();
-            config.removeKey("MULTICAST_IP");
+
+            if(!config.isSet("DEBUG")){
+                config.saveOnFile();
+            }
 
             return true;
         } catch (IOException | UnregisteredConfigNameException e){
@@ -431,10 +459,10 @@ public class SocialClient {
      * Funzione di registrazione del nuovo utente. Eseguita all'avvio dell'app se non è settato il campo USER in config.
      * @return true se la registrazione avviene con successo. False altrimenti
      */
-    protected boolean register(String user, String psw) throws UserExistsException{
+    protected boolean register(String user, String psw) throws InvalidUserException, UserExistsException{
         try {
             if(user.length() == 0 || psw.length() == 0)
-                throw new UserExistsException("User o psw vuoti.");
+                throw new InvalidUserException();
             ObjectSocket server = new ObjectSocket(InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")), (int) config.getValue("SERVER_PORT"));
             RegisterSimpleMessage msg = new RegisterSimpleMessage(user, psw);
             PacketMessage pkt = new PacketMessage(msg, PacketMessage.MessageType.REGISTER);
@@ -447,7 +475,10 @@ public class SocialClient {
                 throw new UserExistsException( ((ErrorSimpleMessage) pkt.getMessage()).getCause() );
             }
             if(pkt.getType() == PacketMessage.MessageType.SUCCESS){
-                config.setConfig("REGISTERED", "true");
+                sonoRegistrato = true;
+                if(!config.isSet("DEBUG")){
+                    config.saveOnFile();
+                }
                 System.out.println("Registrazione avvenuta con successo\n\r");
                 server.close();
                 return true;
@@ -501,7 +532,7 @@ public class SocialClient {
      */
     protected void printMan(){
         System.out.println();
-        System.out.println("*****************************");
+        System.out.println("********************************");
         System.out.println("SCEGLIERE COSA SI VUOLE FARE");
         System.out.println("0 - Exit");
         System.out.println("1 - Logout");
@@ -519,6 +550,7 @@ public class SocialClient {
             System.out.println("9 - Nuovi aggiornamenti da coloro che segui");
         else
             System.out.println("_ - Nessun nuovo aggiornamento");
+        System.out.println("[INVIO] - Aggiorna la schermata");
         System.out.println("*****************************");
     }
 

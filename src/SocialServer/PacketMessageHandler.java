@@ -14,6 +14,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.rmi.RemoteException;
 import java.util.Vector;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by alessandro on 18/05/16.
@@ -34,20 +35,9 @@ public class PacketMessageHandler implements Runnable {
 
 
     public void run() {
+        /* La verifica che l'utente sia loggato è fatta dal main che avvia questo thread*/
         UserDB database = SocialServer.database;
         Config config = SocialServer.config;
-        try{
-            if(!p.getType().equals(PacketMessage.MessageType.REGISTER)) {
-                if (p.getType().equals(PacketMessage.MessageType.LOGIN) ||
-                        database.getUserByName(p.getMessage().getUsername()).checkToken(p.getMessage().getoAuth())) {
-                    database.setOnline(database.getUserByName(p.getMessage().getUsername()));
-                } else {
-                    sendError(sender, "Utente non autenticato correttamente.");
-                }
-            }
-        }catch (UserNotFoundException closeAll){
-            sendError(sender, "Utente non riconosciuto.");
-        }
 
         if(p.getType().equals(PacketMessage.MessageType.REGISTER)){
             RegisterSimpleMessage msg = (RegisterSimpleMessage) p.getMessage();
@@ -56,6 +46,7 @@ public class PacketMessageHandler implements Runnable {
                     sendError(sender, "Nome utente troppo corto");
                     return;
                 }
+
                 database.addUser(new User(msg.getUsername(), msg.getPassword()));
                 sendPkt(sender, PacketMessage.MessageType.SUCCESS, new SimpleMessage());
             } catch (UserExistsException e){
@@ -80,6 +71,14 @@ public class PacketMessageHandler implements Runnable {
                 System.err.println("Non è possibile comunicare il multicast IP, non è configurato correttamente");
                 e.printStackTrace();
             }
+            //***************
+            //TODO: TESTARE COSA SUCCEDE SE LOGOUT SERVER, LOGIN CLIENT
+            try {
+                database.setOffline(msg.getUsername());
+            } catch (UserNotFoundException e) {
+                e.printStackTrace();
+            }
+            //***************
             return;
         }
 
@@ -131,49 +130,16 @@ public class PacketMessageHandler implements Runnable {
             return;
         }
 
-        if(p.getType().equals(PacketMessage.MessageType.FRIENDREQUEST)){
-            try{
-                User u = database.getUserByName(p.getMessage().getUsername());
-                FriendRequestSimpleMessage msg = (FriendRequestSimpleMessage) p.getMessage();
-                try{
-                    if(database.isOnline(msg.getFriend())){
-                        User friend = database.getUserByName(msg.getFriend());
-                        SocketChannel friendSkt = SocketChannel.open();
-                        try{
-                            friendSkt.connect(new InetSocketAddress(friend.getHost(), friend.getPort()));
-                            friendSkt.configureBlocking(false);
-                            database.addFriendRequest(msg.getUsername(), msg.getFriend());
-                            sendPkt(sender, PacketMessage.MessageType.FRIENDREQUEST_SENT,
-                                    new SimpleMessage("Richiesta di amicizia inoltrata correttamente."));
-                            ObjectSocketChannel obj = new ObjectSocketChannel(friendSkt);
-                            obj.setObjectToSend(new PacketMessage(new SimpleMessage(u.getUsername()), PacketMessage.MessageType.FRIENDREQUEST_CONFIRM));
-                            friendSkt.register(SocialServer.selector, SelectionKey.OP_WRITE, obj);
-                        }catch (NullPointerException e){
-                            sendError(sender, "Errore: amico non raggiunbile. Non si conosce l'hostname e l'ip dell'amico.");
-                        }
-
-                    }else{
-                        sendError(sender, "Errore, l'utente non è attualmente online");
-                    }
-                }catch (IOException e){
-                    sendError(sender, "Errore: "+e.getMessage());
-                }
-            }catch (UserNotFoundException e){
-                sendError(sender, "Errore: Utente non valido");
-            }
-            return;
-        }
-
         if(p.getType().equals(PacketMessage.MessageType.FRIENDREQUEST_CONFIRM)){
             try {
-                User u1 = database.getUserByName(p.getMessage().getUsername());
-                User u2 = database.getUserByName((String) p.getMessage().getData());
-                if(database.friendRequest.get(u1).getUsername().equals(u2.getUsername())) { //Confermo che c'era una cosa pendente
-                    u1.addFriend(u2.getUsername());
-                    u2.addFriend(u1.getUsername());
+                String u1 = p.getMessage().getUsername();
+                String u2 = (String) p.getMessage().getData();
+                if(database.friendRequest.get(u1).equals(u2)){ //Confermo che c'era una richiesta pendente
+                    database.getUserByName(u1).addFriend(u2);
+                    database.getUserByName(u2).addFriend(u1);
                     sendPkt(sender, PacketMessage.MessageType.SUCCESS, new SimpleMessage());
                 }
-            } catch (UserNotFoundException ignored){
+            }catch (UserNotFoundException ignored){
             }catch (NullPointerException e){
                 sendError(sender, "Errore interno al server. La richiesta di amicizia non esiste.");
             }
@@ -187,7 +153,11 @@ public class PacketMessageHandler implements Runnable {
                         database.getUserByName(follower).addUnsentMessage(new Post(u.getUsername(), (String) p.getMessage().getData()));
                     }
                     else{
-                        database.getUserByName(follower).getStub().addMessage(u.getUsername(), (String) p.getMessage().getData());
+                        try{
+                            database.getUserByName(follower).getStub().addMessage(u.getUsername(), (String) p.getMessage().getData());
+                        }catch (NullPointerException e){
+
+                        } //TODO: Implementare gestione offline
                     }
                 }
             }

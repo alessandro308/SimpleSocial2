@@ -3,7 +3,7 @@ package SocialClient;
 import SimpleSocial.Message.PacketMessage;
 import SimpleSocial.ObjectSocket;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 import java.util.Vector;
 
@@ -11,7 +11,7 @@ import java.util.Vector;
  * Created by alessandro on 09/05/16.
  */
 public class Listener implements Runnable {
-    private int IP;
+    private int port;
     private String hostname;
     private Vector<String> friendRequest=new Vector<>();
 
@@ -20,19 +20,17 @@ public class Listener implements Runnable {
      * Se i pacchetti non sono di tipo FRIENDREQUEST_CONFIRM i pacchetti sono scartati.
      */
 
-    public Listener(){
-        try {
-            this.hostname = InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException ignored) {}
-    }
-
     @Override
     public void run() {
         try{
             ServerSocket skt = new ServerSocket(0);
-            this.IP = skt.getLocalPort();
+            this.hostname = skt.getInetAddress().getHostAddress();
+            this.port = skt.getLocalPort();
+
             while(true){
                 Socket server = skt.accept();
+                System.out.println(" |Local: " + server.getLocalSocketAddress() + " |Remote: "+ server.getRemoteSocketAddress());
+                //TODO: portare questa cosa multithread, potrebbero arrivare più richieste in contemporanea!
                 PacketMessage msg = (PacketMessage) ObjectSocket.readObject(server);
                 switch (msg.getType()){
                     case FRIENDREQUEST_CONFIRM:
@@ -43,7 +41,6 @@ public class Listener implements Runnable {
                 }
             }
 
-
         }catch (IOException e){
             System.err.println("Errore di comunicazione. "+e.getMessage());
         }
@@ -53,8 +50,8 @@ public class Listener implements Runnable {
     public Vector<String> getFriendRequest(){
         return friendRequest;
     }
-    public int getIP(){
-        return IP;
+    public int getPort(){
+        return port;
     }
     public String getHostname(){
         return hostname;

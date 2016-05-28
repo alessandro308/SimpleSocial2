@@ -1,5 +1,6 @@
 package SocialClient.UI;
 
+import SimpleSocial.Exception.InvalidUserException;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SocialClient.SocialClient;
@@ -52,6 +53,8 @@ public class MainForm extends SocialClient {
                     }
                 }catch (UserExistsException e1) {
                     message.setText("Errore nella registrazione. "+e1.getMessage());
+                }catch (InvalidUserException e1){
+                    message.setText("Nome utente non valido.");
                 }
             });
             next.addActionListener(e -> {

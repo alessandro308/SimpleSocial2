@@ -16,10 +16,10 @@ import java.util.concurrent.locks.ReentrantLock;
  * Classe che gestisce i messaggi di keepAlive per il server.
  */
 public class KeepAliveServerService implements Runnable{
-    Config config;
-    UserDB database;
-    DatagramSocket skt;
-    Long sendTime;
+    private Config config;
+    private UserDB database;
+    private DatagramSocket skt;
+    private Long sendTime;
 
     public KeepAliveServerService(Config config, UserDB database){
         this.config = config;
@@ -64,14 +64,13 @@ public class KeepAliveServerService implements Runnable{
 
             String msg = "KA";
             InetAddress multicastGroup = InetAddress.getByName((String) config.getValue("MULTICAST_IP"));
-            multicastSocket.joinGroup(multicastGroup); //todo: capire il senso di questa riga di codice!!
 
             int port = (Integer) config.getValue("MULTICAST_RECV_PORT");
             DatagramPacket pkt = new DatagramPacket(msg.getBytes(), msg.getBytes().length, multicastGroup, port);
 
             int delay = (Integer) config.getValue("KEEP_ALIVE_DELAY");
 
-            while(true) {
+            while(!Thread.currentThread().isInterrupted()) {
                 try{
                     multicastSocket.send(pkt);
                     sendTime = System.currentTimeMillis();

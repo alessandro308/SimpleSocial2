@@ -1,38 +1,43 @@
 package SocialServer;
 
+import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Exception.UserNotFoundException;
 
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
+import static SocialServer.SocialServer.config;
+
 /**
  * Database degli utenti:User
  */
-public class UserDB {
+public class UserDB implements Serializable{
     private Vector<User> users = new Vector<>();
-    private Vector<User> online = new Vector<>();
-    public Vector<User> userOffline = new Vector<>();
-    public Map<User, User> friendRequest = new HashMap<>();
+    transient private Vector<User> online = new Vector<>();
+    transient public Vector<User> userOffline = new Vector<>();
+    public Map<String, String> friendRequest = new HashMap<>();
 
     /**
      * Aggiunge un utente alla lista di utenti
      * @param user - Utente da aggiungere
      */
-    public void addUser(User user) throws UserExistsException{
+    public synchronized void addUser(User user) throws UserExistsException{
         for(User u:users){
             if(u.getUsername().equals(user.getUsername()))
                 throw new UserExistsException();
         }
         this.users.add(user);
+        writeJSON();
     }
 
     /**
      * Rimuove l'utente userName dal DB se esiste. Se l'utente non esiste il DB rimane invariato.
      * @param userName - Name utente da rimuovere
      */
-    public void removeUser(String userName) {
+    public synchronized void removeUser(String userName) {
         try {
             users.remove(this.getUserByName(userName));
         } catch (UserNotFoundException ignored) {}
@@ -92,9 +97,11 @@ public class UserDB {
      * @throws UserNotFoundException Se l'utente userName non esiste
      */
     public synchronized void setOffline(String userName) throws UserNotFoundException{
-        online.remove(this.getUserByName(userName));
+        this.setOffline(this.getUserByName(userName));
     }
+
     public synchronized void setOffline(User u){
+        u.goOffline();
         online.remove(u);
     }
 
@@ -105,14 +112,19 @@ public class UserDB {
     public synchronized Vector<User> getUserOnline(){
         return online;
     }
+
     /**
-     * Verifica se un utente è nello stato di online
+     * Verifica se un utente è nello stato di online connettendosi all'utente
      * @param username Nome dell'utente
      * @return true se l'utente è online, false altrimenti.
      * @throws UserNotFoundException se l'utente username non esiste nella base di dati
      */
     public synchronized boolean isOnline(String username) throws UserNotFoundException {
         return this.online.contains(this.getUserByName(username));
+    }
+
+    public synchronized boolean isOnline(User user) throws UserNotFoundException {
+        return this.online.contains(user);
     }
 
     /**
@@ -124,8 +136,36 @@ public class UserDB {
         return online;
     }
 
-    public void addFriendRequest(String from, String to) throws UserNotFoundException{
-        friendRequest.put(this.getUserByName(to), this.getUserByName(from));
+    public synchronized void addFriendRequest(String from, String to) throws UserNotFoundException{
+        friendRequest.put(to, from);
+        writeJSON();
+    }
+
+
+    public void writeJSON(){
+        FileOutputStream fout;
+        try {
+            File f = new File((String) config.getValue("DBNAME"));
+            if(!f.exists()){
+                f.createNewFile();
+            }
+            fout = new FileOutputStream(f);
+            ObjectOutputStream oos = new ObjectOutputStream(fout);
+            oos.writeObject(this);
+        } catch (UnregisteredConfigNameException | IOException e) {
+            e.printStackTrace();
+            System.out.println(e.getMessage());
+        }
+        return;
+    }
+
+    public void resumeFromSerialization(){
+        if(this.online == null){
+            this.online = new Vector<>();
+        }
+        if(this.userOffline == null){
+            this.userOffline = new Vector<>();
+        }
     }
 
 }

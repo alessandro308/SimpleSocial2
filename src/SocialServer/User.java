@@ -12,17 +12,17 @@ import java.util.regex.Pattern;
 
 public class User implements Serializable{
     private static final long serialVersionUID = 1L;
-    private String host;
-    private int port = 0;
+    transient private String host;
+    transient private int port = 0;
     private String user;
     private String password;
     private String nick = "";
-    private String token;
-    private long loginTime;
+    transient private String token;
+    transient private long loginTime;
     private static RandomString rand = new RandomString(10);
     private Vector<String> friends = new Vector<>();
     private Vector<String> followers = new Vector<>();
-    private ClientFollowerUpdate stub;
+    transient private ClientFollowerUpdate stub;
 
     private Vector<Post> unsentMessage = new Vector<>();
 
@@ -33,11 +33,13 @@ public class User implements Serializable{
 
     public void addFollower(String u){
         this.followers.add(u);
+        SocialServer.database.writeJSON();
     }
 
     public Vector<String> getFollowers(){
         return this.followers;
     }
+
     /**
      * Sovrascrive l'hostname. Usare per salvare l'ultimo hostname,
      * per ricordarsi a chi mandare i messaggi.
@@ -151,7 +153,10 @@ public class User implements Serializable{
      * @param friendName Nome dell'amico da aggiungere
      */
     public void addFriend(String friendName){
-        friends.add(friendName);
+        if(!friends.contains(friendName)) {
+            friends.add(friendName);
+            SocialServer.database.writeJSON();
+        }
     }
 
     /**
@@ -179,6 +184,22 @@ public class User implements Serializable{
 
     public void addUnsentMessage(Post msg){
         this.unsentMessage.add(msg);
+    }
+
+    public String getPassword(){
+        return this.password;
+    }
+
+    public void goOffline(){
+        this.token = null;
+        this.loginTime = 0;
+        this.stub = null;
+        this.host = null;
+        this.port = 0;
+    }
+
+    public String exportUser(){
+        return "";
     }
 }
 

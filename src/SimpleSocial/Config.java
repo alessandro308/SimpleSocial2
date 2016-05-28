@@ -92,6 +92,7 @@ public class Config {
 
     }
 
+
     public void saveOnFile(){
         try{
         FileOutputStream out = new FileOutputStream(fileName);
@@ -106,6 +107,7 @@ public class Config {
             System.err.println("Non è stato possibile trovare il file di configurazione.");
         }
     }
+
     /**
      * Aggiorna il valore di configurazione key con un nuovo valore. Non aggiorna il file di configurazione.
      * @param key - Nome del valore
@@ -139,18 +141,4 @@ public class Config {
         config.remove(key);
     }
 
-    /**
-     * Salva la configurazione su file.
-     */
-    public void saveConfig(){
-        try{
-            FileOutputStream out = new FileOutputStream(fileName);
-            for (HashMap.Entry<String, Object> entry : config.entrySet()) {
-                out.write( (entry.getKey()+" "+entry.getValue()+"\n").getBytes() );
-            }
-            out.close();
-        } catch(IOException e){
-            System.err.println("Non è stato possibile trovare il file di configurazione.");
-        }
-    }
 }

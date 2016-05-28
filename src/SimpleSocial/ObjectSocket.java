@@ -73,12 +73,19 @@ public class ObjectSocket extends Socket {
         try {
             //Leggi dimensione totale pacchetto
             byte[] dimension = new byte[4];
-            int byteRead = 0;
-            while(byteRead < 4) {
-                byteRead += socket.getInputStream().read(dimension, byteRead, 4 - byteRead);
-            }
-            int size = ByteBuffer.wrap(dimension).getInt();
 
+            int byteRead = 0;
+
+            while(byteRead < 4) {
+                System.out.println("LEGGO DA SOCKET "+socket.getLocalSocketAddress());
+                InputStream x = socket.getInputStream();
+                int tmp = x.read(dimension, byteRead, 4 - byteRead);
+                byteRead += tmp;
+                System.out.println(tmp);
+                assert(byteRead >= 0); //Questo assert fallisce perchè la read restituisce -1!!!
+            }
+
+            int size = ByteBuffer.wrap(dimension).getInt();
             byte[] object = new byte[size];
 
             while(size > 0){
@@ -89,6 +96,7 @@ public class ObjectSocket extends Socket {
             ObjectInputStream ois = new ObjectInputStream(in);
             Object res = ois.readUnshared();
             ois.close();
+
             return res;
         } catch (IOException | ClassNotFoundException e) {
             return null;
