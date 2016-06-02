@@ -74,8 +74,6 @@ public class User implements Serializable{
         return this.user;
     }
 
-    public String getNick(){ return this.nick; }
-
     /**
      * Controlla se la password è corretta
      * @param password - La password da controllare
@@ -112,27 +110,8 @@ public class User implements Serializable{
      * @param token Token da validare.
      * @return true se il token risulta valido. False se errato o scaduto.
      */
-    public boolean checkToken(String token){
-        if(this.token != null)
-            return System.currentTimeMillis() - loginTime < 86400000 /*24 ore*/ && this.token.equals(token);
-        return false;
-    }
-
-    /**
-     * Nome reale dell'utente. Opzionale.
-     * @param nickname - Nome da impostare
-     */
-    public void setNick(String nickname){
-        this.nick = nickname;
-    }
-
-    /**
-     * Funzione di ricerca dell'utente data una sottostringa
-     * @param query - Ricerca dell'utente
-     * @return true se la stringa query è presente nel nome o nello username, false altrimenti.
-     */
-    public boolean isMe(String query){
-        return Pattern.matches(query, this.nick+this.user);
+    public boolean checkToken(String token) {
+        return this.token != null && System.currentTimeMillis() - loginTime < 86400000 /*24 ore*/ && this.token.equals(token);
     }
 
     /**
@@ -145,7 +124,7 @@ public class User implements Serializable{
      */
     public void logout(){
         this.token = null;
-        this.loginTime = 00;
+        this.loginTime = 0;
     }
 
     /**
@@ -186,10 +165,6 @@ public class User implements Serializable{
         this.unsentMessage.add(msg);
     }
 
-    public String getPassword(){
-        return this.password;
-    }
-
     public void goOffline(){
         this.token = null;
         this.loginTime = 0;
@@ -198,9 +173,6 @@ public class User implements Serializable{
         this.port = 0;
     }
 
-    public String exportUser(){
-        return "";
-    }
 }
 
 

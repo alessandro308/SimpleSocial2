@@ -42,19 +42,19 @@ public class SocialServer {
      * handler che si preoccupa di gestirle.
      */
     public SocialServer() {
-        File dbFile = null;
+        File dbFile;
         try {
             dbFile = new File((String) config.getValue("DBNAME"));
-            //TODO: Implementare il caricamento database utenti
+
             if (dbFile.exists()) {
+                /*Qui viene letto il DB serializzato contenuto nel file USERDB.dat, deserializzato e sistemato per l'uso*/
                 ObjectInputStream objectinputstream = null;
                 try {
                     FileInputStream streamIn = new FileInputStream(dbFile);
                     objectinputstream = new ObjectInputStream(streamIn);
-                    UserDB readCase = (UserDB) objectinputstream.readObject();
-                    database = readCase;
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    database = (UserDB) objectinputstream.readObject();
+                } catch (ClassNotFoundException | IOException e) {
+                    System.err.println("Errore nel caricamento del file. Potrebbe essere corrotto.");
                 } finally {
                     if(objectinputstream != null){
                         try{ objectinputstream.close();} catch (IOException ignored){}
@@ -66,9 +66,7 @@ public class SocialServer {
             if (database == null) {
                 database = new UserDB();
             }
-        } /*catch (IOException e){
-            System.err.println("Errore avvio Database " +e.getMessage());
-        }*/ catch (UnregisteredConfigNameException e) {
+        } catch (UnregisteredConfigNameException e) {
             System.err.println("Errore config: DBUSER_NAME non correttamente configurato");
         }
 
@@ -166,7 +164,7 @@ public class SocialServer {
 
                                     User friend = database.getUserByName(msg.getFriend());
 
-                                    try{
+                                    try {
                                         SocketChannel friendSkt = SocketChannel.open(new InetSocketAddress(InetAddress.getByName(friend.getHost()), friend.getPort()));
                                         friendSkt.configureBlocking(false);
                                         database.addFriendRequest(msg.getUsername(), msg.getFriend());
@@ -179,11 +177,35 @@ public class SocialServer {
                                         friendSkt.register(selector, SelectionKey.OP_WRITE, obj);
                                         PacketMessageHandler.sendPkt(key, PacketMessage.MessageType.FRIENDREQUEST_SENT,
                                                 new SimpleMessage("Richiesta di amicizia inoltrata correttamente."));
-                                    }catch (NullPointerException | IOException e){
+                                    } catch (NullPointerException | IOException e) {
                                         PacketMessageHandler.sendError(key, "Errore, l'utente non è attualmente online");
                                     }
                                 } catch (UserNotFoundException e) {
                                     PacketMessageHandler.sendError(key, "Errore: Utente non valido");
+                                }
+                            } else if(logged && pktMsg.getType().equals(PacketMessage.MessageType.FRIENDREQUEST_CONFIRM)){
+                                try {
+                                    String u1 = pktMsg.getMessage().getUsername();
+                                    String u2 = (String) pktMsg.getMessage().getData();
+                                    if(database.friendRequest.get(u1).equals(u2)){ //Confermo che c'era una richiesta pendente
+                                        database.getUserByName(u1).addFriend(u2);
+                                        database.getUserByName(u2).addFriend(u1);
+                                        PacketMessageHandler.sendPkt(key, PacketMessage.MessageType.SUCCESS, new SimpleMessage());
+
+                                        //Avviso il mittente che la richiesta è stata accettata
+                                        User friend = database.getUserByName(u2);
+                                        SocketChannel friendSkt = SocketChannel.open(new InetSocketAddress(InetAddress.getByName(friend.getHost()), friend.getPort()));
+                                        friendSkt.configureBlocking(false);
+                                        ObjectSocketChannel obj = new ObjectSocketChannel(friendSkt);
+
+                                        PacketMessage p = new PacketMessage(new SimpleMessage(u1), PacketMessage.MessageType.FRIENDREQUEST_ACCEPTED);
+                                        obj.setObjectToSend(p);
+
+                                        friendSkt.register(selector, SelectionKey.OP_WRITE, obj);
+                                    }
+                                }catch (UserNotFoundException ignored){
+                                }catch (NullPointerException e){
+                                    PacketMessageHandler.sendError(key, "Errore interno al server. La richiesta di amicizia non esiste.");
                                 }
                             } else if (logged || pktMsg.getType().equals(PacketMessage.MessageType.REGISTER) ){
                                 pool.submit(new PacketMessageHandler(key, pktMsg));

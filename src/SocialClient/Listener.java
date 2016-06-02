@@ -27,18 +27,22 @@ public class Listener implements Runnable {
             this.hostname = skt.getInetAddress().getHostAddress();
             this.port = skt.getLocalPort();
 
-            while(true){
+            while(!Thread.currentThread().isInterrupted()){
                 Socket server = skt.accept();
-                System.out.println(" |Local: " + server.getLocalSocketAddress() + " |Remote: "+ server.getRemoteSocketAddress());
-                //TODO: portare questa cosa multithread, potrebbero arrivare più richieste in contemporanea!
+                /* Sarebbe bene fare questa cosa multithread ma anche così l'efficienza, visto che l'evento di
+                 * conferma amicizia non è così frequente, può andare bene
+                 */
                 PacketMessage msg = (PacketMessage) ObjectSocket.readObject(server);
-                switch (msg.getType()){
-                    case FRIENDREQUEST_CONFIRM:
-                        friendRequest.add((String) msg.getMessage().getData());
-                        break;
-                    default:
-                        break;
-                }
+                if(msg != null)
+                    switch (msg.getType()){
+                        case FRIENDREQUEST_CONFIRM:
+                            friendRequest.add((String) msg.getMessage().getData());
+                            break;
+                        case FRIENDREQUEST_ACCEPTED:
+                            System.out.println("Ei! "+msg.getMessage().getData()+" ha accettato la tua richiesta di amicizia");
+                        default:
+                            break;
+                    }
             }
 
         }catch (IOException e){

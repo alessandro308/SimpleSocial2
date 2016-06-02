@@ -16,12 +16,12 @@ import java.util.Map;
  * Se valore è un intero viene parsato e considerato come tale
  */
 public class Config {
-    HashMap<String, Object> config = new HashMap<>();
-    String fileName;
+    private HashMap<String, Object> config = new HashMap<>();
+    private String fileName;
 
     public Config(String configFile){
         fileName = configFile;
-        BufferedReader br = null;
+        BufferedReader br;
         try {
             br = new BufferedReader(new FileReader(configFile));
             String line;
@@ -96,10 +96,9 @@ public class Config {
     public void saveOnFile(){
         try{
         FileOutputStream out = new FileOutputStream(fileName);
-        Iterator it = config.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry)it.next();
-                out.write( (pair.getKey()+" "+pair.getValue()+"\n").getBytes() );
+            for (Object o : config.entrySet()) {
+                Map.Entry pair = (Map.Entry) o;
+                out.write((pair.getKey() + " " + pair.getValue() + "\n").getBytes());
             }
             out.close();
         }

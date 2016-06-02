@@ -1,7 +1,5 @@
 package SimpleSocial;
 
-import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
-
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -77,12 +75,8 @@ public class ObjectSocket extends Socket {
             int byteRead = 0;
 
             while(byteRead < 4) {
-                System.out.println("LEGGO DA SOCKET "+socket.getLocalSocketAddress());
                 InputStream x = socket.getInputStream();
-                int tmp = x.read(dimension, byteRead, 4 - byteRead);
-                byteRead += tmp;
-                System.out.println(tmp);
-                assert(byteRead >= 0); //Questo assert fallisce perchè la read restituisce -1!!!
+                byteRead= x.read(dimension, byteRead, 4 - byteRead);
             }
 
             int size = ByteBuffer.wrap(dimension).getInt();

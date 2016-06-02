@@ -4,18 +4,14 @@ import SimpleSocial.Config;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserNotFoundException;
 
-import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.util.Vector;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Classe che gestisce i messaggi di keepAlive per il server.
  */
-public class KeepAliveServerService implements Runnable{
+class KeepAliveServerService implements Runnable{
     private Config config;
     private UserDB database;
     private DatagramSocket skt;
@@ -30,14 +26,14 @@ public class KeepAliveServerService implements Runnable{
             e.printStackTrace();
         }
 
-        (new Thread(){
+        (new Thread(){ //Mi scuso con chiunque per questa dichiarazione inline del Thread ma fare l'ennesimo file mi sembrava peggio
             public void run(){
                 try {
                     DatagramPacket pkt = new DatagramPacket(new byte[512], 512);
-                    while(true){
+                    while(!Thread.currentThread().isInterrupted()){
                         skt.receive(pkt);
                         if(System.currentTimeMillis() - sendTime < 10000 ) {
-                            //Controlla al più pacchetti arrivati dopo 10 secondi dall'invio del keepAlive
+                            //Scarta i pacchetti arrivati dopo i 10 secondi dall'ultimo invio di KeepAlive
                             String user = new String(pkt.getData(), 10, pkt.getLength() - 10);
                             String oAuth = new String(pkt.getData(), 0, 10);
                             if (database.getUserByName(user).checkToken(oAuth))
@@ -77,14 +73,25 @@ public class KeepAliveServerService implements Runnable{
                 }catch ( IOException e){
                     System.out.println("Errore di comunicazione con la rete multicast. "+e.getMessage());
                 }
-
-                Thread.sleep(delay);
-                Vector<User> online = database.updateOnline();
-                System.out.println("-Utenti Online-");
-                if(online.isEmpty())
-                    System.out.println("_nessuno_");
-                else
-                    online.forEach(e -> System.out.println(e.getUsername()));
+                Thread.sleep(10000); //Dormi almeno 10 secondi, tempo minimo di KEEPALiVE.
+                try {
+                    Vector<User> online = database.updateOnline();
+                    System.out.println("-Utenti Online-");
+                    if (online.isEmpty())
+                        System.out.println("_nessuno_");
+                    else
+                        online.forEach(e -> System.out.println(e.getUsername()));
+                    try {
+                        Thread.sleep(delay - 10000);//Aspetta fino alla prossima iterazione
+                    } catch (IllegalArgumentException ignored) {
+                        /*
+                         * Se è stata lanciata l'eccezione vuol dire che si vogliono mandare keepAlive troppo frequenti.
+                         * Procedi quindi a rimandare nuovamente un KA.
+                         */
+                    }
+                }catch (IllegalArgumentException | InterruptedException e){
+                    return; //TODO: Testare questa nuova gestione del KEEPALIVE
+                }
             }
         }catch (UnregisteredConfigNameException e){
             System.err.println("MULTICAST_PORT o MULTICAST_TTL non settati correttamente nel file di configurazione");

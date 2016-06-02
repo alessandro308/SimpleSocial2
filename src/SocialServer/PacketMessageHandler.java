@@ -6,20 +6,22 @@ import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Exception.UserNotFoundException;
 import SimpleSocial.Message.*;
+import SimpleSocial.ObjectSocket;
 import SimpleSocial.ObjectSocketChannel;
 
-import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.rmi.RemoteException;
 import java.util.Vector;
-import java.util.concurrent.ExecutionException;
 
 /**
- * Created by alessandro on 18/05/16.
+ * Thread che viene avviato e che processa il messaggio ricevuto dal client. Se il messaggio è di tipo FRIENDREQUEST
+ * viene gestito direttamente nel ServerMain in quanto la registrazione di una socketchannel sul selector, in caso in cui
+ * il selector è bloccato sulla .select(), porta in deadlock il sistema.
  */
-public class PacketMessageHandler implements Runnable {
+class PacketMessageHandler implements Runnable {
     SelectionKey sender;
     PacketMessage p;
 
@@ -60,9 +62,11 @@ public class PacketMessageHandler implements Runnable {
             try{
                 User u = database.getUserByName(msg.getUsername());
                 String oAuth = u.checkLogin(msg.getPassword());
+                System.out.println("DATABASE PMH "+database);
                 u.setHost(msg.getUserHostname(), msg.getUserPORT());
                 database.setOnline(u.getUsername());
                 sendPkt(sender, PacketMessage.MessageType.LOGINRESPONSE, new LoginSimpleMessage(oAuth, u.getLoginTime(), (String) config.getValue("MULTICAST_IP")));
+
             }catch (UserNotFoundException e){
                 sendError(sender, "L'utente non esiste nel database. Registrarsi.");
             } catch (LoginFailException e){
@@ -71,14 +75,6 @@ public class PacketMessageHandler implements Runnable {
                 System.err.println("Non è possibile comunicare il multicast IP, non è configurato correttamente");
                 e.printStackTrace();
             }
-            //***************
-            //TODO: TESTARE COSA SUCCEDE SE LOGOUT SERVER, LOGIN CLIENT
-            try {
-                database.setOffline(msg.getUsername());
-            } catch (UserNotFoundException e) {
-                e.printStackTrace();
-            }
-            //***************
             return;
         }
 
@@ -117,6 +113,7 @@ public class PacketMessageHandler implements Runnable {
         }
 
         if(p.getType().equals(PacketMessage.MessageType.SEARCHUSER)){
+            System.out.println("RICERCA UTENTE");
             Vector<String> found = database.searchUser(((SearchUserSimpleMessage) p.getMessage()).getQuery());
             sendPkt(sender, PacketMessage.MessageType.SEARCHUSERRESPONSE, new SearchUserSimpleMessage(found));
             return;
@@ -130,34 +127,15 @@ public class PacketMessageHandler implements Runnable {
             return;
         }
 
-        if(p.getType().equals(PacketMessage.MessageType.FRIENDREQUEST_CONFIRM)){
-            try {
-                String u1 = p.getMessage().getUsername();
-                String u2 = (String) p.getMessage().getData();
-                if(database.friendRequest.get(u1).equals(u2)){ //Confermo che c'era una richiesta pendente
-                    database.getUserByName(u1).addFriend(u2);
-                    database.getUserByName(u2).addFriend(u1);
-                    sendPkt(sender, PacketMessage.MessageType.SUCCESS, new SimpleMessage());
-                }
-            }catch (UserNotFoundException ignored){
-            }catch (NullPointerException e){
-                sendError(sender, "Errore interno al server. La richiesta di amicizia non esiste.");
-            }
-            return;
-        }
         if(p.getType().equals(PacketMessage.MessageType.SHARETHIS)){
             try{
                 User u = database.getUserByName(p.getMessage().getUsername());
                 for(String follower : u.getFollowers()){
-                    if(!database.isOnline(follower)){
+                    try{
+                        database.getUserByName(follower).getStub().addMessage(u.getUsername(), (String) p.getMessage().getData());
+                    }catch (NullPointerException e){
+                        /* L'utente non è online, infatti lo Stub non è settato e restituisce nullPointerException*/
                         database.getUserByName(follower).addUnsentMessage(new Post(u.getUsername(), (String) p.getMessage().getData()));
-                    }
-                    else{
-                        try{
-                            database.getUserByName(follower).getStub().addMessage(u.getUsername(), (String) p.getMessage().getData());
-                        }catch (NullPointerException e){
-
-                        } //TODO: Implementare gestione offline
                     }
                 }
             }

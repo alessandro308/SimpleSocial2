@@ -9,7 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * È l'oggetto che gestisce le componenti RMI del client
  */
 public class ClientFollowerUpdateImpl implements ClientFollowerUpdate {
-    CopyOnWriteArrayList<Post> unreadMessage = new CopyOnWriteArrayList<>();
+    private CopyOnWriteArrayList<Post> unreadMessage = new CopyOnWriteArrayList<>();
 
     public ClientFollowerUpdateImpl(){
     }
@@ -30,6 +30,10 @@ public class ClientFollowerUpdateImpl implements ClientFollowerUpdate {
      * @return La lista dei messaggi non ricevuti
      */
     public CopyOnWriteArrayList<Post> getUnreadMessage(){
+        /*Il client, alla riconnessione, chiama questa funzione per avere la lista dei messaggi mandati in sua assenza.
+         * Forse era logicamente più corretto che glieli mandava il server e non fosse lui a doverla richiedere ma così
+         * si sono scritte meno righe di codice.
+         */
         return this.unreadMessage;
     }
 

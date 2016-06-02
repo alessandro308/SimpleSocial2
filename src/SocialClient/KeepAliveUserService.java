@@ -2,16 +2,9 @@ package SocialClient;
 
 import SimpleSocial.Config;
 import SimpleSocial.Exception.UnregisteredConfigNameException;
-import SimpleSocial.Message.PacketMessage;
-import SimpleSocial.Message.SimpleMessage;
-import SimpleSocial.ObjectSocket;
 
-import javax.xml.crypto.Data;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.*;
-import java.nio.ByteBuffer;
 
 
 /**
@@ -20,11 +13,11 @@ import java.nio.ByteBuffer;
  * Il KeepAliveUserService riceve i pacchetti che gli arrivano e se contiene il dato "KA" risponde
  * con un messaggio su TCP utilizzando la serializzazione dei PacketMessage implementata in questo progetto.
  */
-public class KeepAliveUserService implements Runnable {
+class KeepAliveUserService implements Runnable {
     private MulticastSocket multicastSocket;
     private Config config;
     private DatagramSocket skt;
-    public KeepAliveUserService(Config config){
+    KeepAliveUserService(Config config){
         this.config = config;
         try {
             this.multicastSocket = new MulticastSocket((Integer) config.getValue("MULTICAST_PORT"));
@@ -52,8 +45,14 @@ public class KeepAliveUserService implements Runnable {
                 multicastSocket.receive(pkt);
                 byte[] b = pkt.getData();
                 String msg = new String(b, 0, pkt.getLength());
+                String reply;
+                try{
+                    reply = ((String) config.getValue("OAUTH"))+config.getValue("USER");
+                } catch (UnregisteredConfigNameException e){
+                    /*L'utente non è loggato*/
+                    return;
+                }
 
-                String reply = ((String) config.getValue("OAUTH"))+config.getValue("USER");
                 DatagramPacket pacchetto = new DatagramPacket(reply.getBytes(), reply.getBytes().length,
                                                                 InetAddress.getByName((String) config.getValue("SERVER_HOSTNAME")),
                                                                 (Integer) config.getValue("PORTA_SERVER_KA"));
@@ -73,7 +72,7 @@ public class KeepAliveUserService implements Runnable {
         try {
             multicastSocket.leaveGroup(InetAddress.getByName((String) config.getValue("MULTICAST_IP")));
         } catch (IOException | UnregisteredConfigNameException e) {
-
+            System.err.println("Qualcosa è andato storto nell'uscita dal MulticastGroup. "+e.getMessage());
         }
     }
 }

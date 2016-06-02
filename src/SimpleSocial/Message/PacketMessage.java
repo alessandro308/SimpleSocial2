@@ -8,13 +8,13 @@ import java.io.Serializable;
 public class PacketMessage implements Serializable{
     public enum MessageType{
         KEEPALIVE,
-        FRIENDREQUEST, FRIENDREQUEST_SENT, FRIENDREQUEST_CONFIRM,
+        FRIENDREQUEST, FRIENDREQUEST_SENT, FRIENDREQUEST_CONFIRM, FRIENDREQUEST_ACCEPTED,
         FRIENDLIST, FRIENDLISTRESPONSE,
         REGISTER, LOGIN, LOGOUT, LOGINRESPONSE, NOTLOGGED,
         SEARCHUSER, SEARCHUSERRESPONSE,
         ERROR, SUCCESS,
         TOKENUPDATE,
-        SHARETHIS, FOLLOWREQUEST
+        SHARETHIS
     }
 
     private SimpleMessage message;

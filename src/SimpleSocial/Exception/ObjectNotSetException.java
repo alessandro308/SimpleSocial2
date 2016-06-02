@@ -1,7 +1,7 @@
 package SimpleSocial.Exception;
 
 /**
- * Created by alessandro on 09/05/16.
+ * Eccezione lanciata se un oggetto che doveva essere settato è invece null
  */
 public class ObjectNotSetException extends RuntimeException {
     public ObjectNotSetException(String message){

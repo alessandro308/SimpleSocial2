@@ -18,21 +18,17 @@ public class FollowerManagerImpl implements FollowerManager {
         this.database = database;
     }
 
-    /**
-     * Richiamare la funzione con un PacketMessage contentente come dati il nome dell'utente che si vuole seguire
-     * @param pkt Pacchetto spedito
-     */
-    public void follow(PacketMessage pkt) throws RemoteException{
+    public void follow(String username, String oAuth, String toFollow) throws RemoteException{
         SocialServer.User u;
         SocialServer.User followed;
         try {
-            u = database.getUserByName(pkt.getMessage().getUsername());
-            followed = database.getUserByName((String) pkt.getMessage().getData());
+            u = database.getUserByName(username);
+            followed = database.getUserByName(toFollow);
         } catch (UserNotFoundException ignored) {
             return;
         }
 
-        if(pkt.getType().equals(PacketMessage.MessageType.FOLLOWREQUEST) && u.checkToken(pkt.getMessage().getoAuth())) {
+        if(u.checkToken(oAuth)) {
             database.setOnline(u);
             followed.addFollower(u.getUsername());
         }

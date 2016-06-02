@@ -15,9 +15,10 @@ import static SocialServer.SocialServer.config;
  * Database degli utenti:User
  */
 public class UserDB implements Serializable{
+    static final long serialVersionUID = 1L;
     private Vector<User> users = new Vector<>();
     transient private Vector<User> online = new Vector<>();
-    transient public Vector<User> userOffline = new Vector<>();
+    private transient Vector<User> userOffline = new Vector<>();
     public Map<String, String> friendRequest = new HashMap<>();
 
     /**
@@ -142,7 +143,7 @@ public class UserDB implements Serializable{
     }
 
 
-    public void writeJSON(){
+    void writeJSON(){
         FileOutputStream fout;
         try {
             File f = new File((String) config.getValue("DBNAME"));
@@ -156,7 +157,6 @@ public class UserDB implements Serializable{
             e.printStackTrace();
             System.out.println(e.getMessage());
         }
-        return;
     }
 
     public void resumeFromSerialization(){

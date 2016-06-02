@@ -60,17 +60,20 @@ public class SocialClient {
         System.out.println("----------------------------");
         System.out.flush();
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        while(true) {
+        label:
+        while (true) {
             try {
                 String l = br.readLine();
-                if (l.equals("1")) {
-                    break;
-                } else if (l.equals("2")) {
-                    sonoRegistrato = true;
-                    break;
-                } else {
-                    System.out.println("Scelta non valida.\r");
-                    System.out.flush();
+                switch (l) {
+                    case "1":
+                        break label;
+                    case "2":
+                        sonoRegistrato = true;
+                        break label;
+                    default:
+                        System.out.println("Scelta non valida.\r");
+                        System.out.flush();
+                        break;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -164,8 +167,7 @@ public class SocialClient {
                         try {
                             Vector<String> list = getFriendList();
                             System.out.println("\n\r**LISTA AMICI:**");
-                            for (String n : list)
-                                System.out.println(n);
+                            list.forEach(System.out::println);
                         } catch (UnregisteredConfigNameException e) {
                             System.err.println("Qualcosa è andato storto. Riprovare. // " + e.getMessage());
                         } catch (IOException e) {
@@ -236,12 +238,13 @@ public class SocialClient {
                                 if (friendsList.contains(tmp)) {
                                     toFollow = tmp;
                                 } else {
-                                    System.out.println("Nome dell'amico non valido. Riprova.");
+                                    System.out.println("Nome dell'amico non valido. Riprova. [INVIO per annullare]");
                                 }
                             }
                             if (toFollow.equals(""))
                                 break;
                             sendFollowRequest(toFollow);
+                            System.out.println("Da ora riceverai gli aggiornamenti di "+toFollow);
                         } catch (UnregisteredConfigNameException e) {
                             logout();
                         } catch (IOException e) {
@@ -268,7 +271,7 @@ public class SocialClient {
             FollowerManager manager = (FollowerManager) registry.lookup(FollowerManager.OBJECT_NAME);
             String user = (String) config.getValue("USER");
             String oAuth = (String) config.getValue("OAUTH");
-            manager.follow(new PacketMessage(new SimpleMessage(user, oAuth, toFollow), PacketMessage.MessageType.FOLLOWREQUEST));
+            manager.follow(user, oAuth, toFollow);
         } catch (RemoteException e) {
             System.err.println("Errore RMI. "+e.getMessage());
             e.printStackTrace();
@@ -307,6 +310,9 @@ public class SocialClient {
         PacketMessage reply = (PacketMessage) skt.readObject();
         if(reply.getType().equals(PacketMessage.MessageType.SUCCESS)){
             return "OK";
+        } else if(reply.getType().equals(PacketMessage.MessageType.NOTLOGGED)){
+            config.removeKey("OAUTH");
+            return "Non risulti loggato. Rieffettuare il login.";
         }
 
         return ((ErrorSimpleMessage) reply.getMessage()).getCause();
@@ -329,6 +335,9 @@ public class SocialClient {
         PacketMessage reply = (PacketMessage) skt.readObject();
         if(reply.getType().equals(PacketMessage.MessageType.FRIENDREQUEST_SENT)){
             return (String) reply.getMessage().getData();
+        }else if(reply.getType().equals(PacketMessage.MessageType.NOTLOGGED)){
+            config.removeKey("OAUTH");
+            return "Non risulti loggato. Rieffettuare il login.";
         }
         return ((ErrorSimpleMessage) reply.getMessage()).getCause();
     }
@@ -345,8 +354,16 @@ public class SocialClient {
         skt.writeObject(new PacketMessage(msg, PacketMessage.MessageType.FRIENDLIST));
         PacketMessage reply = (PacketMessage) skt.readObject();
         if(reply.getType().equals(PacketMessage.MessageType.FRIENDLISTRESPONSE)){
-            Vector<String> list = (Vector<String>) reply.getMessage().getData();
-            return list;
+            try{
+                return (Vector<String>) reply.getMessage().getData();
+            }catch (ClassCastException e){
+                return null;
+            }
+        }else if(reply.getType().equals(PacketMessage.MessageType.NOTLOGGED)){
+            System.out.println("Non risulti loggato. Rieffettuare il login.");
+            config.removeKey("OAUTH");
+        } else{
+            System.out.println("Errore di comuncazione. Riprovare.");
         }
         return null;
     }
@@ -364,6 +381,13 @@ public class SocialClient {
                 config.updateConfig("OAUTH", (reply.getMessage()).getoAuth());
                 config.updateConfig("OAUTH_TIME", ((LoginSimpleMessage) reply.getMessage()).getoAuthTime());
                 return (String) config.getValue("OAUTH");
+            } else if(reply.getType().equals(PacketMessage.MessageType.NOTLOGGED)){
+                System.out.println("Non risulti loggato. Rieffettuare il login.");
+                config.removeKey("OAUTH");
+            } else{
+                System.out.println("Errore nella comunicazione. Verrà effettuato il logout.");
+                config.removeKey("OAUTH");
+                return null;
             }
         }catch (UnregisteredConfigNameException e){
             System.err.println("Qualcosa è andato storto. Riprovare. // "+e.getMessage());
@@ -416,6 +440,9 @@ public class SocialClient {
             }else if(reply.getType() == PacketMessage.MessageType.ERROR){
                 System.err.println(((ErrorSimpleMessage)reply.getMessage()).getCause());
                 return false;
+            }else if(reply.getType().equals(PacketMessage.MessageType.NOTLOGGED)){
+                System.out.println("Non risulti loggato. Rieffettuare il login.");
+                config.removeKey("OAUTH");
             }
         } catch (IOException e){
             e.printStackTrace();
@@ -505,7 +532,13 @@ public class SocialClient {
             if(reply.getType() == PacketMessage.MessageType.SEARCHUSERRESPONSE){
                 return ((SearchUserSimpleMessage) reply.getMessage()).response();
             }else {
-                System.out.println("Qualcosa è andato storto. Riprova.");
+                if(reply.getType().equals(PacketMessage.MessageType.NOTLOGGED)){
+                    System.out.println("Non risulti loggato. Rieffettuare il login.");
+                    config.removeKey("OAUTH");
+                }
+                else{
+                    System.out.println("Qualcosa è andato storto. Riprova."+((ErrorSimpleMessage) reply.getMessage()).getCause());
+                }
             }
         } catch (IOException ignored){
         } catch (UnregisteredConfigNameException e){
@@ -547,7 +580,7 @@ public class SocialClient {
         System.out.println("7 - Pubblica contenuto");
         System.out.println("8 - Inizia a seguire un amico");
         if(updateHandler.getUnreadMessageCount() > 0)
-            System.out.println("9 - Nuovi aggiornamenti da coloro che segui");
+            System.out.println("9 - Ci sono nuovi aggiornamenti da visualizzare da coloro che segui");
         else
             System.out.println("_ - Nessun nuovo aggiornamento");
         System.out.println("[INVIO] - Aggiorna la schermata");
