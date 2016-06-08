@@ -50,8 +50,9 @@ public class SocialClient {
     }
 
     /**
-     * Funzione principale del SocialClient.
-     * Effettua un ciclo continuo chiedendo quale operazione si vuole effettuare invocandola.
+     * Funzione che gestite l'interazione con l'utente tramite la console.
+     * Può essere sostituita con la costruire di un'interfaccia grafica, in quanto richiama al suo interno
+     * tutte funzioni esterne per la gestione logica delle funzioni (login, register, friendRequest...)
      */
     public void start(){
 
@@ -142,6 +143,8 @@ public class SocialClient {
                     case 0:
                         logout();
                         config.saveOnFile();
+                        this.keepAliveService.interrupt();
+                        this.listenerThr.interrupt();
                         System.exit(0);
                         break;
                     case 1:
@@ -470,10 +473,6 @@ public class SocialClient {
             config.removeKey("OAUTH_TIME");
 
             keepAliveService.interrupt();
-
-            if(!config.isSet("DEBUG")){
-                config.saveOnFile();
-            }
 
             return true;
         } catch (IOException | UnregisteredConfigNameException e){

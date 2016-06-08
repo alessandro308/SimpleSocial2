@@ -9,6 +9,7 @@ import SimpleSocial.Message.SimpleMessage;
 import SimpleSocial.ObjectSocketChannel;
 import SocialServer.RemoteMessage.FollowerManager;
 import SocialServer.RemoteMessage.FollowerManagerImpl;
+import com.sun.corba.se.spi.activation.Server;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,10 +17,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.net.UnknownHostException;
+import java.nio.channels.*;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -229,7 +228,6 @@ public class SocialServer {
     public static void main(String[] args) {
         System.setProperty("java.net.preferIPv4Stack", "true");
         new SocialServer();
-
     }
 
 }

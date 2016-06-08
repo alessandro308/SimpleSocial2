@@ -6,9 +6,7 @@ import SimpleSocial.RandomString;
 import SocialClient.RemoteMessage.ClientFollowerUpdate;
 
 import java.io.Serializable;
-
 import java.util.Vector;
-import java.util.regex.Pattern;
 
 public class User implements Serializable{
     private static final long serialVersionUID = 1L;

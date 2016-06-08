@@ -26,7 +26,9 @@ class KeepAliveServerService implements Runnable{
             e.printStackTrace();
         }
 
-        (new Thread(){ //Mi scuso con chiunque per questa dichiarazione inline del Thread ma fare l'ennesimo file mi sembrava peggio
+        (new Thread(){ /* Mi scuso con chiunque per questa dichiarazione
+                        * inline del Thread ma fare l'ennesimo file mi sembrava peggio
+                        */
             public void run(){
                 try {
                     DatagramPacket pkt = new DatagramPacket(new byte[512], 512);
@@ -36,11 +38,17 @@ class KeepAliveServerService implements Runnable{
                             //Scarta i pacchetti arrivati dopo i 10 secondi dall'ultimo invio di KeepAlive
                             String user = new String(pkt.getData(), 10, pkt.getLength() - 10);
                             String oAuth = new String(pkt.getData(), 0, 10);
-                            if (database.getUserByName(user).checkToken(oAuth))
-                                database.setOnline(user);
+                            try{
+                                if (database.getUserByName(user).checkToken(oAuth))
+                                    database.setOnline(user);
+                            }catch (UserNotFoundException e){
+                                System.err.println("Non è stato trovato l'utente. Questo accade se il client è attivato" +
+                                        " prima dell'avvio del server, spesso perchè lasciato in esecuzione da una precedente" +
+                                        "istanza.");
+                            }
                         }
                     }
-                } catch (IOException | UserNotFoundException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
 
@@ -69,7 +77,8 @@ class KeepAliveServerService implements Runnable{
             while(!Thread.currentThread().isInterrupted()) {
                 try{
                     multicastSocket.send(pkt);
-                    sendTime = System.currentTimeMillis();
+                    sendTime = System.currentTimeMillis(); /*Si trascura l'intervallo di tempo tra l'invio (riga precedente)
+                                                            * e l'esecuzione di questa riga */
                 }catch ( IOException e){
                     System.out.println("Errore di comunicazione con la rete multicast. "+e.getMessage());
                 }

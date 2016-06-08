@@ -1,7 +1,6 @@
 package SocialServer.RemoteMessage;
 
 import SimpleSocial.Exception.UserNotFoundException;
-import SimpleSocial.Message.PacketMessage;
 import SocialClient.RemoteMessage.ClientFollowerUpdate;
 import SocialServer.User;
 

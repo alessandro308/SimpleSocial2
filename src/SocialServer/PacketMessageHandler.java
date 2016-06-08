@@ -6,11 +6,8 @@ import SimpleSocial.Exception.UnregisteredConfigNameException;
 import SimpleSocial.Exception.UserExistsException;
 import SimpleSocial.Exception.UserNotFoundException;
 import SimpleSocial.Message.*;
-import SimpleSocial.ObjectSocket;
 import SimpleSocial.ObjectSocketChannel;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.rmi.RemoteException;
@@ -26,7 +23,7 @@ class PacketMessageHandler implements Runnable {
     PacketMessage p;
 
     /**
-     * Funzione di lettura e gestione dei pacchetti arrivati
+     * Thread di lettura e gestione dei pacchetti arrivati
      * @param pkt - Pacchetto ricevuto
      * @param sender - Mittente. Necessario per le risposte.
      */
@@ -62,7 +59,6 @@ class PacketMessageHandler implements Runnable {
             try{
                 User u = database.getUserByName(msg.getUsername());
                 String oAuth = u.checkLogin(msg.getPassword());
-                System.out.println("DATABASE PMH "+database);
                 u.setHost(msg.getUserHostname(), msg.getUserPORT());
                 database.setOnline(u.getUsername());
                 sendPkt(sender, PacketMessage.MessageType.LOGINRESPONSE, new LoginSimpleMessage(oAuth, u.getLoginTime(), (String) config.getValue("MULTICAST_IP")));

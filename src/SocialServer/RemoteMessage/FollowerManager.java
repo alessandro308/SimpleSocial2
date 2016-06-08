@@ -1,6 +1,5 @@
 package SocialServer.RemoteMessage;
 
-import SimpleSocial.Message.PacketMessage;
 import SocialClient.RemoteMessage.ClientFollowerUpdate;
 
 import java.rmi.Remote;

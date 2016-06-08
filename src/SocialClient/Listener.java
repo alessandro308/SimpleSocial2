@@ -3,8 +3,9 @@ package SocialClient;
 import SimpleSocial.Message.PacketMessage;
 import SimpleSocial.ObjectSocket;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Vector;
 
 /**
