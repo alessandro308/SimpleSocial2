@@ -21,3 +21,4 @@ Il client lavora con le classiche socket bloccanti, andando a gestire tramite va
 richieste che possono arrivare dal server.
 
 Per leggere la specifica completa: http://alessandro308.com/files/ProgettoLPR2016.pdf
+Per altri dettagli implementativi: https://github.com/alessandro308/SimpleSocial2/blob/master/Relazione/main.pdf
