@@ -1,3 +1,6 @@
+#AVVISO AGLI ALTRI STUDENTI
+La professoressa conosce particolarmente bene questo codice perchè l'ho portato più volte a far vedere a ricevimento quando avevo dubbi e problemi. Copiare da questo progetto non è quindi una buona idea, magari prendere spunto si, a eviterei, fossi in voi, di riusare questo codice così com'è.
+
 # SimpleSocial2
 
 Il progetto consiste nello sviluppo di una rete sociale caratterizzata da un semplice insieme di funzionalità. Per utilizzare queste funzionalità, gli utenti si devono registrare, quindi possono:
