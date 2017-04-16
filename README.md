@@ -1,6 +1,3 @@
-#AVVISO AGLI ALTRI STUDENTI
-La professoressa conosce particolarmente bene questo codice perchè l'ho portato più volte a far vedere a ricevimento quando avevo dubbi e problemi. Copiare da questo progetto non è quindi una buona idea, magari prendere spunto si, a eviterei, fossi in voi, di riusare questo codice così com'è.
-
 # SimpleSocial2
 
 Il progetto consiste nello sviluppo di una rete sociale caratterizzata da un semplice insieme di funzionalità. Per utilizzare queste funzionalità, gli utenti si devono registrare, quindi possono:
@@ -13,16 +10,14 @@ Il progetto consiste nello sviluppo di una rete sociale caratterizzata da un sem
 contenuti
 - effettuare logout
 
-##Implementazioni
-###Server
+## Implementazioni
+### Server
 Il server lavora tramite NIO, gestendo ogni client in un channel separato. 
 La richiesta di messaggi di KeepAlive viene mandata in multicast all'indirizzo impostato nel file di configurazione.
 I client devono conoscere l'indirizzo per potersi registrare e ricevere i messaggi.
 
-###Client
+### Client
 Il client lavora con le classiche socket bloccanti, andando a gestire tramite vari thread i vari tipi di
 richieste che possono arrivare dal server.
-
-Per leggere la specifica completa: http://alessandro308.com/files/ProgettoLPR2016.pdf
 
 Per altri dettagli implementativi: https://github.com/alessandro308/SimpleSocial2/blob/master/Relazione/main.pdf
